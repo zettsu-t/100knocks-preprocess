@@ -1700,3 +1700,79 @@ df_r074 %>%
     dplyr::arrange(wday) %>%
     kable() %>% kable_styling()
 ```
+
+## サンプリング
+
+### R-075
+
+標準の **sample** を使ってみる。2回実行すると結果が異なることが分かる。
+
+```{r r075a, eval=FALSE, echo=TRUE, cache=TRUE}
+n <- NROW(df_customer)
+df_customer[sample(1:n, round(n / 10), replace=FALSE),]
+```
+
+```{r r075a_print, eval=TRUE, echo=FALSE, cache=TRUE}
+n <- NROW(df_customer)
+get_one_10th_samples <- function() {
+    df_customer[sample(1:n, round(n / 10), replace=FALSE),]
+}
+
+get_one_10th_samples() %>% head(10) %>% kable() %>% kable_styling()
+get_one_10th_samples() %>% head(10) %>% kable() %>% kable_styling()
+```
+
+```{r r075a_confirm, eval=TRUE, echo=FALSE, cache=TRUE}
+print(n)
+print(NROW(df_r075a))
+```
+
+### R-076
+
+**dplyr::sample_n** を使ってみる。実は先ほどのR-075でも使えた。
+
+```{r r076, eval=FALSE, echo=TRUE, cache=TRUE}
+df_r076 <- df_customer %>%
+    dplyr::group_by(gender_cd) %>%
+    dplyr::sample_n(size=n() * 0.1, replace = FALSE) %>%
+    dplyr::ungroup()
+
+df_r076 %>%
+    dplyr::group_by(gender_cd) %>%
+    dplyr::summarize(n=n()) %>%
+    dplyr::ungroup()
+```
+
+```{r r076_print, eval=TRUE, echo=FALSE, cache=TRUE}
+get_one_10th_samples_gender <- function() {
+    df_samples <- df_customer %>%
+        dplyr::group_by(gender_cd) %>%
+        dplyr::sample_n(size=n() * 0.1, replace = FALSE) %>%
+        dplyr::ungroup()
+
+    df_counts <- df_samples %>%
+        dplyr::group_by(gender_cd) %>%
+        dplyr::summarize(n=n()) %>%
+        dplyr::ungroup() %>%
+        dplyr::select(c('gender_cd', 'n'))
+
+    list(samples=df_samples, counts=df_counts)
+}
+
+get_one_10th_samples_gender()$samples %>% head(10) %>% kable() %>% kable_styling()
+result_r076 <- get_one_10th_samples_gender()
+result_r076$samples %>% head(10) %>% kable() %>% kable_styling()
+result_r076$counts %>% kable() %>% kable_styling()
+``````
+
+全体のサンプル数の1割になっていることがわかる。
+
+```{r r076_confirm, eval=TRUE, echo=FALSE, cache=TRUE}
+df_customer %>%
+    dplyr::group_by(gender_cd) %>%
+    dplyr::summarize(n=n()) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(c('gender_cd', 'n')) %>%
+    kable() %>% kable_styling()
+``````
+
