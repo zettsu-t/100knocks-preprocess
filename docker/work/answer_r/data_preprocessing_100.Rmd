@@ -1,0 +1,968 @@
+---
+title: "データサイエンス100本ノック (構造化データ加工編) 私の解答"
+author: "プログラマたんbot"
+date: '`r format(Sys.time(), "%Y/%m/%d")`'
+output:
+  html_document:
+    toc: true
+  pdf_document:
+    latex_engine: xelatex
+  beamer_presentation:
+    pandoc_args:
+    - --latex-engine
+    - xelatex
+header-includes:
+  \usepackage{float}
+documentclass: bxjsarticle
+classoption: xelatex,ja=standard
+urlcolor: blue
+---
+
+[データサイエンス100本ノック（構造化データ加工編）](https://github.com/The-Japan-DataScientist-Society/100knocks-preprocess)の、R版についての私の解答です。正解例は公式をみてください。
+
+注意: まだ作成中です。公式解答集はみていませんので、答えが間違っている可能性も、もっとよい書き方もあります。
+
+## 問題を解く環境をインストールする
+
+上記公式サイトの手順に従って、インストールする。
+
+このR Markdown文書では、入力データの docker/work/data/*.csv のみを使うので、この.Rmdファイルのあるディレクトリに work/data/.csv を置く。RStudioからこの.Rmdファイルをknitrすると、実行結果を埋め込んだHTMLなどに変換して読めるようになる。
+
+## 問題を解く準備をする
+
+### この解答例で使用するRパッケージをロードする
+
+```{r find_packages, include=FALSE, cache=TRUE}
+## 既にファイルあれば、以下のコマンドでパッケージを探せる
+## grep -Poh '([a-z]+)::' *.R *.Rmd | sort | uniq
+```
+
+```{r load_packages, echo=TRUE, warning=FALSE, message=FALSE, cache=FALSE}
+library(tidyverse)
+library(dplyr)
+library(purrr)
+library(readr)
+library(stringr)
+library(tidyr)
+library(data.table)
+library(lubridate)
+library(assertthat)
+library(mlr)
+library(purrrlyr)
+library(scales)
+library(geosphere)
+library(kableExtra)
+sessionInfo()
+```
+
+### この問題で使用するデータを読み込む
+
+私の環境では、geocode.csv を readr::read_csv で読むとエラーになるので、代わりにdata.table::freadを用いる。
+
+```{r load_data_sets, echo=TRUE, warning=FALSE, message=FALSE, cache=TRUE}
+df_receipt <- readr::read_csv('../data/receipt.csv')
+df_store <- readr::read_csv('../data/store.csv')
+df_customer <- readr::read_csv('../data/customer.csv')
+df_product <- readr::read_csv('../data/product.csv')
+df_category <- readr::read_csv('../data/category.csv')
+df_geocode <- as_tibble(data.table::fread('../data/geocode.csv'))
+```
+
+## 列に対する動作
+
+### R-001
+
+**head()** を使うと、先頭から指定行だけ取り出すことができる。RStudioのコンソールから実行するとテキストが出力され、R Markdownでは **kable() %>% kable_styling()** を用いることできれいな表に整形できる。
+
+```{r r001, eval=FALSE, echo=TRUE, cache=TRUE}
+head(df_receipt, 10)
+```
+
+```{r r001_print, eval=TRUE, echo=TRUE, cache=TRUE}
+head(df_receipt, 10) %>% kable() %>% kable_styling()
+```
+
+### R-002
+
+**dplyr::select()** を使うと、指定した列(縦に長いほう)を、指定した順に取り出すことができる。元々の入力 (df_receipt) は変更しない。
+
+```{r r002, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt %>%
+    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'amount')) %>%
+    head(10)
+```
+
+```{r r002_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt %>%
+    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'amount')) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+### R-003
+
+**dplyr::rename()** を使うと、列の名前を変更できる。
+
+```{r r003, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt %>%
+    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'amount')) %>%
+    dplyr::rename(sales_date=sales_ymd) %>%
+    head(10)
+```
+
+```{r r003_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt %>%
+    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'amount')) %>%
+    dplyr::rename(sales_date=sales_ymd) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+## 行に対する動作
+
+### R-004
+
+**dplyr::filter()** を使うと、条件にあう行(横に長いほう)だけを取り出せる。
+
+```{r r004, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt %>%
+    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'amount')) %>%
+    dplyr::filter(customer_id == 'CS018205000001')
+```
+
+```{r r004_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt %>%
+    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'amount')) %>%
+    dplyr::filter(customer_id == 'CS018205000001') %>% kable() %>% kable_styling()
+```
+
+### R-005
+
+**dplyr::filter()** の中に、条件を複数書ける。R-004の一部の行が選ばれたことが分かる。
+
+```{r r005, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt %>%
+    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'quantity', 'amount')) %>%
+    dplyr::filter((customer_id == 'CS018205000001') & (amount >= 1000))
+```
+
+```{r r005_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt %>%
+    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'quantity', 'amount')) %>%
+    dplyr::filter((customer_id == 'CS018205000001') & (amount >= 1000)) %>% kable() %>% kable_styling()
+```
+
+### R-006
+
+```{r r006, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt %>%
+    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'quantity', 'amount')) %>%
+    dplyr::filter((customer_id == 'CS018205000001') & ((amount >= 1000) | (quantity >= 5)))
+```
+
+```{r r006_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt %>%
+    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'quantity', 'amount')) %>%
+    dplyr::filter((customer_id == 'CS018205000001') & ((amount >= 1000) | (quantity >= 5))) %>%
+    kable() %>% kable_styling()
+```
+
+### R-007
+
+```{r r007, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt %>%
+    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'quantity', 'amount')) %>%
+    dplyr::filter(customer_id == 'CS018205000001' & ((amount >= 1000) | (amount <= 2000)))
+```
+
+```{r r007_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt %>%
+    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'quantity', 'amount')) %>%
+    dplyr::filter(customer_id == 'CS018205000001' & ((amount >= 1000) | (amount <= 2000))) %>%
+    kable() %>% kable_styling()
+```
+
+### R-008
+
+```{r r008, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt %>%
+    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'quantity', 'amount')) %>%
+    dplyr::filter(customer_id == 'CS018205000001' & (product_cd != 'P071401019'))
+```
+
+```{r r008_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt %>%
+    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'quantity', 'amount')) %>%
+    dplyr::filter(customer_id == 'CS018205000001' & (product_cd != 'P071401019')) %>%
+    kable() %>% kable_styling()
+```
+
+### R-009
+
+この問いは、pandas.DataFrame.queryに相当する処理をRで書く、と趣旨のようだ。ともかく、notを使うとandをorに交換できる。
+
+```{r r009a, eval=TRUE, echo=TRUE, cache=TRUE}
+df_r009a <- df_store %>% dplyr::filter(!((prefecture_cd != 13) & (floor_area <= 900)))
+```
+
+```{r r009a_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_r009a %>% head(10) %>% kable() %>% kable_styling()
+```
+
+長いので先頭 ```r dim(df_r009a)[1]``` 件だけ出力した。次に、問題文と同じくorで書いてみる。
+
+```{r r009b, eval=TRUE, echo=TRUE, cache=TRUE}
+df_r009b <- df_store %>% dplyr::filter((prefecture_cd == 13) | (floor_area > 900))
+```
+
+```{r r009b_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_r009b %>% head(10) %>% kable() %>% kable_styling()
+```
+
+両者の結果は一致するはずだが、目視で確認するのは辛いので、自動化しよう。 **dim()**はデータフレーム(というかここではtibble)の行数と列数を、二次元の整数ベクトルで返す。==は行数、列数同士で比較して一致すればTRUE、そうでなければFALSEを返す。行数同士、列数同士が一致すればc(TRUE, TRUE)が返るので、両方ともTRUEであることを **all()** で確認する。
+
+**assertthat::assert_that()** を使うと、条件を満たさないときにエラーになり、このR Markdownのknitも止まる。
+
+```{r r009c, eval=TRUE, echo=TRUE, cache=TRUE}
+assertthat::assert_that(all(dim(df_r009a) == dim(df_r009b)))
+```
+
+項目名が一致することも確認しよう。
+
+```{r r009d, eval=TRUE, echo=TRUE, cache=TRUE}
+assertthat::assert_that(all(sort(df_r009a$store_cd) == sort(df_r009b$store_cd)))
+```
+
+## あいまい条件
+
+### R-010
+
+**dplyr::filter()** に文字列処理を書く。
+
+```{r r010, eval=FALSE, echo=TRUE, cache=TRUE}
+df_store %>%
+    dplyr::filter(stringr::str_starts(store_cd, 'S14')) %>%
+    head(10)
+```
+
+```{r r010_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_store %>%
+    dplyr::filter(stringr::str_starts(store_cd, 'S14')) %>%
+    head(10) %>%
+    kable() %>% kable_styling()
+```
+
+### R-011
+
+R-010と同様。
+
+```{r r011, eval=FALSE, echo=TRUE, cache=TRUE}
+df_customer %>%
+    dplyr::filter(stringr::str_ends(customer_id, '1')) %>%
+    head(10)
+```
+
+```{r r011_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_customer %>%
+    dplyr::filter(stringr::str_ends(customer_id, '1')) %>%
+    head(10) %>%
+    kable() %>% kable_styling()
+```
+
+### R-012
+
+住所がどの列に格納されているかみる。
+
+```{r r012a, eval=FALSE, echo=TRUE, cache=TRUE}
+df_store %>% head(1)
+```
+
+```{r r012a_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_store %>% head(1) %>% kable() %>% kable_styling()
+```
+
+addressのようなので、横浜市を含む住所を探す。横浜市以外には横浜市という文字列を含まないとよいのだが(東京都に対する京都みたいに)。
+
+```{r r012b, eval=FALSE, echo=TRUE, cache=TRUE}
+df_store %>%
+    dplyr::filter(stringr::str_detect(address, '横浜市'))
+```
+
+```{r r012b_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_store %>%
+    dplyr::filter(stringr::str_detect(address, '横浜市')) %>%
+    kable() %>% kable_styling()
+```
+
+### R-013
+
+そろそろ正規表現を使う。というかR-012の '横浜市' は実は正規表現だった。
+
+```{r r013, eval=FALSE, echo=TRUE, cache=TRUE}
+df_customer %>%
+    dplyr::filter(stringr::str_detect(status_cd, '^[A-F]')) %>%
+    head(10)
+```
+
+```{r r013_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_customer %>%
+    dplyr::filter(stringr::str_detect(status_cd, '^[A-F]')) %>%
+    dplyr::select(c('customer_id', 'customer_name', 'status_cd')) %>%
+    head(10) %>%
+    kable() %>% kable_styling()
+```
+
+### R-014
+
+```{r r014, eval=FALSE, echo=TRUE, cache=TRUE}
+df_customer %>%
+    dplyr::filter(stringr::str_detect(status_cd, '[1-9]$')) %>%
+    head(10)
+```
+
+```{r r014_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_customer %>%
+    dplyr::filter(stringr::str_detect(status_cd, '[1-9]$')) %>%
+    dplyr::select(c('customer_id', 'customer_name', 'status_cd')) %>%
+    head(10) %>%
+    kable() %>% kable_styling()
+```
+
+### R-015
+
+```{r r015, eval=FALSE, echo=TRUE, cache=TRUE}
+df_customer %>%
+    dplyr::filter(stringr::str_detect(status_cd, '^[A-F].*[1-9]$')) %>%
+    head(10)
+```
+
+```{r r015_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_customer %>%
+    dplyr::filter(stringr::str_detect(status_cd, '^[A-F].*[1-9]$')) %>%
+    dplyr::select(c('customer_id', 'customer_name', 'status_cd')) %>%
+    head(10) %>%
+    kable() %>% kable_styling()
+```
+
+## ソート
+```
+
+### R-016
+
+```{r r016, eval=FALSE, echo=TRUE, cache=TRUE}
+df_store %>%
+    dplyr::filter(stringr::str_detect(tel_no, '^\\d{3}\\-\\d{3}\\-\\d{4}$'))
+```
+
+```{r r016_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_store %>%
+    dplyr::filter(stringr::str_detect(tel_no, '^\\d{3}\\-\\d{3}\\-\\d{4}$')) %>%
+    kable() %>% kable_styling()
+```
+
+### R-017
+
+誕生日の型を確認する。
+
+```{r r017a, eval=FALSE, echo=TRUE, cache=TRUE}
+class(df_customer$birth_day)
+```
+
+文字列なので表示して書式を確かめる。
+
+```{r r017b, eval=TRUE, echo=FALSE, cache=TRUE}
+head(df_customer$birth_day, 20)
+```
+
+YYYY-MM-DD形式なので、文字列としてソートしても日付順になる。
+
+```{r r017c, eval=TRUE, echo=TRUE, cache=TRUE}
+df_r017a <- df_customer %>%
+    dplyr::arrange(birth_day) %>%
+    head(10)
+```
+
+```{r r017c_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_customer %>%
+    dplyr::arrange(birth_day) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+月や日が一桁のときに数字が一桁で表記されているときは、文字列として比較すると上手くいかない。1月2日より前に1月10日がきてしまう。
+
+```{r r017d, eval=TRUE, echo=TRUE, cache=TRUE}
+date_str_set <- c("2019-1-2", "2019-1-10", "2019-10-2")
+sort(date_str_set)
+```
+
+**lubridate::parse_date_time** で文字列を日付に変換しよう。1月2日より後に1月10日がくるようになった。
+
+```{r r017e, eval=TRUE, echo=TRUE, cache=TRUE}
+date_set <- lubridate::parse_date_time(date_str_set ,"%y-%m-%d")
+sort(date_set)
+```
+
+念のため、**dplyr::mutate** で日付を変換してソートしよう。
+
+```{r r017f, eval=TRUE, echo=TRUE, cache=TRUE}
+df_r017b <- df_customer %>%
+    dplyr::mutate(birth_day=lubridate::parse_date_time(birth_day ,"%y-%m-%d")) %>%
+    dplyr::arrange(birth_day) %>%
+    head(10)
+```
+
+```{r r017f_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_customer %>%
+    dplyr::mutate(birth_day=lubridate::parse_date_time(birth_day ,"%y-%m-%d")) %>%
+    dplyr::arrange(birth_day) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+結果が同じになることが分かる。
+
+```{r r017g, eval=TRUE, echo=TRUE, cache=TRUE}
+assertthat::assert_that(all(sort(df_r017a$customer_id) == sort(df_r017b$customer_id)))
+```
+
+### R-018
+
+**desc** にすると降順になる。
+
+```{r r018, eval=FALSE, echo=TRUE, cache=TRUE}
+df_customer %>%
+    dplyr::arrange(desc(birth_day)) %>%
+    head(10)
+```
+
+```{r r018_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_customer %>%
+    dplyr::arrange(desc(birth_day)) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+### R-019
+
+**dense_rank** で順位をつけることができる。同じ値は同じ順位になる。
+
+```{r r019, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt %>%
+    dplyr::mutate(rank=dense_rank(desc(amount))) %>%
+    dplyr::arrange(desc(amount)) %>%
+    head(10)
+```
+
+```{r r019_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt %>%
+    dplyr::mutate(rank=dense_rank(desc(amount))) %>%
+    dplyr::arrange(desc(amount)) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+### R-020
+
+**dplyr::mutate** の中で **n()** を使うと、列数を取得することができる。
+
+```{r r020a, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt %>%
+    dplyr::arrange(desc(amount)) %>%
+    dplyr::mutate(rank=seq(n())) %>%
+    head(10)
+```
+
+```{r r020a_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt %>%
+    dplyr::arrange(desc(amount)) %>%
+    dplyr::mutate(rank=seq(n())) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+seq(x)は1からxまで(1とxを含む)整数を返す。1:xと同じである。
+
+```{r r020b, eval=TRUE, echo=TRUE, cache=TRUE}
+seq(5)
+1:5
+seq(-5)
+1:(-5)
+```
+
+## 集計
+
+### R-021
+
+列の数を数える方法はいくつかあるが、NROWマクロを使うとよい。
+
+```{r r021a, eval=TRUE, echo=TRUE, cache=TRUE}
+NROW(df_receipt)
+```
+
+NROWのよいところは、ベクトルの長さにも使えることである。
+
+```{r r021b, eval=TRUE, echo=TRUE, cache=TRUE}
+v021 <- c(1,2,3)
+NROW(v021)
+```
+
+data.frameの行数を **nrow** で求めることもできるし、ベクトルの長さを **length** で求めてもよい。でもめんどくさいし、特に関数の引数として変数が渡ってきたときに使い分けたくない。
+
+```{r r021c, eval=TRUE, echo=TRUE, cache=TRUE}
+nrow(df_receipt)
+length(v021)
+```
+
+### R-022
+
+一列分のデータ=は **$** で取り出せる。 **unique** を使うと一意な要素だけになるよう取り出す。入力がソートされている必要はない。
+
+```{r r022a, eval=TRUE, echo=TRUE, cache=TRUE}
+NROW(unique(df_receipt$customer_id))
+```
+
+さて$で取り出した結果は、ベクトルと、列が一個のtibbleと、どちらなのだろう。 **class** で確認しよう。
+
+```{r r022b, eval=TRUE, echo=TRUE, cache=TRUE}
+class(df_receipt$customer_id)
+```
+
+どうやらベクトルだったようだ。ちなみに character は文字ではなく文字列である。
+
+ここでは 'customer_id' をハードコーディングしたが、変数として与えたいこともあるだろう。ここでは変数 col_name で与えよう。
+
+```{r r022c, eval=TRUE, echo=TRUE, cache=TRUE}
+col_name <- 'customer_id'
+sub_df_022_a <- df_receipt[[col_name]]
+class(sub_df_022_a)
+NROW(sub_df_022_a)
+```
+
+ところで [[]] が二重になっているのが気になる。一重だったらどうだろう。
+
+```{r r022d, eval=TRUE, echo=TRUE, cache=TRUE}
+col_name <- 'customer_id'
+sub_df_022_b <- df_receipt[col_name]
+class(sub_df_022_b)
+dim(sub_df_022_b)
+NROW(sub_df_022_b)
+```
+
+列が一個のtibbleが返ってきた。ベクトルと列が一個のtibbleとどちらを使うかは状況次第だが、NROWがどちらにも使えるのは幸いである。
+
+### R-023
+
+ここからがtidyverseの本領発揮である。～ごとにという処理は **dplyr::group_by** を使う。～とまとめるいう処理は **dplyr::summarize** と書く。 **sum** は文字通り、項目の和を取る。最後に **dplyr::ungroup** でまとめる。
+
+```{r r023a, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt %>%
+    dplyr::group_by(store_cd) %>%
+    dplyr::summarize(amount=sum(amount), quantity=sum(quantity)) %>%
+    dplyr::ungroup()
+```
+
+```{r r023a_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt %>%
+    dplyr::group_by(store_cd) %>%
+    dplyr::summarize(amount=sum(amount), quantity=sum(quantity)) %>%
+    dplyr::ungroup() %>% kable() %>% kable_styling()
+```
+
+
+検算をしてみよう。確かに store_cd ごとに合計が求まっている。
+
+```{r r023b, eval=TRUE, echo=TRUE, cache=TRUE}
+df_r023_sub <- df_receipt %>%
+    dplyr::filter(store_cd == 'S14050')
+sum(df_r023_sub$amount)
+sum(df_r023_sub$quantity)
+```
+
+### R-024
+
+まず日付の形式を確かめよう。年(4桁)月(2桁)日(2桁)が並んだ数値である。このままソートしても日付順になるので変換せずに使おう。
+
+```{r r024a, eval=TRUE, echo=TRUE, cache=TRUE}
+head(df_receipt$sales_ymd)
+class(df_receipt$sales_ymd)
+```
+
+customer_id ごとに～する、の～についてはこれまでと同様に書ける。 **head** は **do** で呼び出す。 **.** は、 **%>%** で渡ってくるものを第一引数に収めるための placeholder である。
+
+```{r r024b, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt %>%
+    dplyr::arrange(customer_id) %>%
+    dplyr::select(c('customer_id', 'sales_ymd')) %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::arrange(desc(sales_ymd)) %>%
+    do(head(., n=1)) %>%
+    dplyr::ungroup() %>%
+    head(10)
+```
+
+```{r r024b_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt %>%
+    dplyr::arrange(customer_id) %>%
+    dplyr::select(c('customer_id', 'sales_ymd')) %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::arrange(desc(sales_ymd)) %>%
+    do(head(., n=1)) %>%
+    dplyr::ungroup() %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+### R-025
+
+**desc** を外せば昇順になる。
+
+```{r r025, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt %>%
+    dplyr::arrange(customer_id) %>%
+    dplyr::select(c('customer_id', 'sales_ymd')) %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::arrange(sales_ymd) %>%
+    do(head(., n=1)) %>%
+    dplyr::ungroup() %>%
+    head(10)
+```
+
+```{r r025_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt_r025 <- df_receipt %>%
+    dplyr::arrange(customer_id) %>%
+    dplyr::select(c('customer_id', 'sales_ymd')) %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::arrange(sales_ymd) %>%
+    do(head(., n=1)) %>%
+    dplyr::ungroup()
+
+df_receipt_r025 %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+### R-026
+
+最も新しい日と最も古い日が同じなら、異なる日付が一回しか出ないようにしたときに、日付が一種類しかない、と言える。同じ日付が複数回出た場合に対処する。列(の集合)が同じ値なら、最も上にある行を選ぶために **dplyr::distinct** を使う。
+
+```{r r026, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt %>%
+    dplyr::arrange(customer_id, desc(sales_ymd)) %>%
+    dplyr::select(c('customer_id', 'sales_ymd')) %>%
+    dplyr::distinct(customer_id, sales_ymd, .keep_all=TRUE) %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::filter(row_number() == 1 | row_number() == n()) %>%
+    dplyr::filter(n() > 1) %>%
+    dplyr::ungroup() %>%
+    head(10)
+```
+
+```{r r026_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt_r026 <- df_receipt %>%
+    dplyr::arrange(customer_id, desc(sales_ymd)) %>%
+    dplyr::select(c('customer_id', 'sales_ymd')) %>%
+    dplyr::distinct(customer_id, sales_ymd, .keep_all=TRUE) %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::filter(row_number() == 1 | row_number() == n()) %>%
+    dplyr::filter(n() > 1) %>%
+    dplyr::ungroup()
+
+df_receipt_r026 %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+customer_id: ```r df_receipt_r025$customer_id[1]``` が除かれて customer_id: ```r df_receipt_r026$customer_id[1]``` が残ったので、正しそうだ。
+
+### R-027
+
+**sum** の代わりに **mean** と書く。
+
+```{r r027, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt %>%
+    dplyr::group_by(store_cd) %>%
+    dplyr::summarize(amount=mean(amount)) %>%
+    dplyr::ungroup() %>%
+    dplyr::arrange(desc(amount)) %>%
+    head(5)
+```
+
+```{r r027_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt %>%
+    dplyr::group_by(store_cd) %>%
+    dplyr::summarize(amount=mean(amount)) %>%
+    dplyr::ungroup() %>%
+    dplyr::arrange(desc(amount)) %>%
+    head(5) %>% kable() %>% kable_styling()
+```
+
+### R-028
+
+R-028, R-030, R-031 は R-027 と同じことの繰り返しなので、関数にしよう。
+
+```{r r028_common, eval=TRUE, echo=TRUE, cache=TRUE}
+summarize_receipt <- function(func) {
+    df_receipt %>%
+        dplyr::group_by(store_cd) %>%
+        dplyr::summarize(amount=func(amount)) %>%
+        dplyr::ungroup() %>%
+        dplyr::arrange(desc(amount)) %>%
+        head(5)
+}
+```
+
+```{r r028, eval=FALSE, echo=TRUE, cache=TRUE}
+summarize_receipt(median)
+```
+
+```{r r028_print, eval=TRUE, echo=TRUE, cache=TRUE}
+summarize_receipt(median) %>% kable() %>% kable_styling()
+```
+
+### R-029
+
+Rには最頻値を求める関数がない。代わりに **dplyr::count** で数えて、最も多いものを **dplyr::top_n** で選ぶ。
+
+```{r r029, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt_mode <- df_receipt %>%
+    dplyr::select(c('store_cd', 'product_cd')) %>%
+    dplyr::group_by(store_cd, product_cd) %>%
+    dplyr::count(product_cd) %>%
+    dplyr::ungroup() %>%
+    dplyr::group_by(store_cd) %>%
+    dplyr::top_n(1, n) %>%
+    dplyr::ungroup()
+```
+
+```{r r029_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt_r029 <- df_receipt %>%
+    dplyr::select(c('store_cd', 'product_cd')) %>%
+    dplyr::group_by(store_cd, product_cd) %>%
+    dplyr::count(product_cd) %>%
+    dplyr::ungroup() %>%
+    dplyr::group_by(store_cd) %>%
+    dplyr::top_n(1, n) %>%
+    dplyr::ungroup()
+df_receipt_r029 %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+```{r r029_key, eval=TRUE, echo=TRUE, cache=TRUE}
+store_cd_r029 <- df_receipt_r029$store_cd[1]
+store_cd_r029
+```
+
+store_cd: ```r store_cd_r029```だけ集計して、あっているかどうか確認する。
+
+```{r r029_assert, eval=TRUE, echo=TRUE, cache=TRUE}
+df_r029_sub <- df_receipt %>%
+    dplyr::select(c('store_cd', 'product_cd')) %>%
+    dplyr::filter(store_cd == store_cd_r029)
+
+counts_r029 <- sort((df_r029_sub %>% dplyr::count(product_cd))$n, decreasing=TRUE)
+assertthat::assert_that(NROW(df_r029_sub) == sum(counts_r029))
+head(counts_r029, 10)
+```
+
+### R-030
+
+```{r r030, eval=FALSE, echo=TRUE, cache=TRUE}
+summarize_receipt(var)
+```
+
+```{r r030_print, eval=TRUE, echo=FALSE, cache=TRUE}
+summarize_receipt(var) %>% kable() %>% kable_styling()
+```
+
+### R-031
+
+```{r r031, eval=FALSE, echo=TRUE, cache=TRUE}
+summarize_receipt(sd)
+```
+
+```{r r031_print, eval=TRUE, echo=FALSE, cache=TRUE}
+summarize_receipt(sd) %>% kable() %>% kable_styling()
+```
+
+### R-032
+
+**quantile** を使うと簡潔に書ける。結果は数値ベクトルである。
+
+```{r r032, eval=TRUE, echo=TRUE, cache=TRUE}
+r032_quantiles <- quantile(df_receipt$amount, c(0.25, 0.5, 0.75))
+```
+
+```{r r032_print, eval=TRUE, echo=TRUE, cache=TRUE}
+quantile(df_receipt$amount, c(0.25, 0.5, 0.75)) %>% kable() %>% kable_styling()
+```
+
+```{r r032_class, eval=TRUE, echo=TRUE, cache=TRUE}
+class(r032_quantiles)
+names(r032_quantiles)
+```
+
+### R-033
+
+```{r r033, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt %>%
+    dplyr::group_by(store_cd) %>%
+    dplyr::summarize(amount=mean(amount)) %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(amount >= 330)
+```
+
+```{r r033_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt %>%
+    dplyr::group_by(store_cd) %>%
+    dplyr::summarize(amount=mean(amount)) %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(amount >= 330) %>% kable() %>% kable_styling()
+```
+
+## 副問合わせ
+
+### R-034
+
+顧客IDが"Z"から始まるのものは非会員を表すため除外したデータは、今後の問題で頻繁に出るのでここで作る。 df_receipt_z_excluded という変数に格納する。
+
+```{r r034_filter, eval=TRUE, echo=TRUE, cache=TRUE}
+df_receipt_z_excluded <- df_receipt %>%
+    dplyr::filter(!stringr::str_starts(customer_id, 'Z'))
+```
+
+顧客IDの先頭文字を確認しよう。顧客IDにはCとZで始まるものがあるが、確かにZで始まるものが除外された。
+
+```{r r034_confirm, eval=TRUE, echo=TRUE, cache=TRUE}
+extract_head_char <- function(xs) {
+    purrr::map_chr(xs, ~ stringr::str_match(.x, "^.")) %>% unique()
+}
+
+extract_head_char(df_receipt$customer_id)
+extract_head_char(df_receipt_z_excluded$customer_id)
+```
+
+```{r r034, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt_z_excluded %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup() %>%
+    head(10)
+```
+
+```{r r034_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt_mean <- df_receipt_z_excluded %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup()
+
+df_receipt_mean %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+### R-035
+
+R-034の結果を使おう。このままだと出力が正しいかどうか分からないので、平均を示す。
+
+```{r r035, eval=FALSE, echo=TRUE, cache=TRUE}
+mean(df_receipt_mean$amount)
+df_receipt_mean %>%
+    dplyr::filter(amount > mean(df_receipt_mean$amount)) %>%
+    head(10)
+```
+
+```{r r035_print, eval=TRUE, echo=FALSE, cache=TRUE}
+mean(df_receipt_mean$amount)
+df_receipt_mean %>%
+    dplyr::filter(amount > mean(df_receipt_mean$amount)) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+## 結合
+
+### R-036
+
+内部結合とはinner joinのことですよね。そのものずばり **dplyr::inner_join** を使う。
+
+```{r r036, eval=TRUE, echo=TRUE, cache=TRUE}
+dplyr::inner_join(df_receipt, df_store)$store_name %>%
+    head(10)
+```
+
+### R-037
+
+列名は **colnames** で得られる。
+
+```{r r037, eval=FALSE, echo=TRUE, cache=TRUE}
+dplyr::inner_join(df_product, df_category) %>%
+    dplyr::select(unique(c(colnames(df_product), 'category_small_name'))) %>%
+    head(10)
+```
+
+```{r r037_print, eval=TRUE, echo=FALSE, cache=TRUE}
+dplyr::inner_join(df_product, df_category) %>%
+    dplyr::select(unique(c(colnames(df_product), 'category_small_name'))) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+### R-038
+
+```{r r038_customer_id, eval=TRUE, echo=FALSE, cache=TRUE}
+r038_customer_id_no_amounts <- (dplyr::left_join(df_customer, df_receipt_z_excluded, by='customer_id') %>%
+    dplyr::filter(is.na(amount)) %>%
+    head(1))$customer_id[1]
+```
+
+**dplyr::left_join** を使えば、買い物実績が無い顧客についても結合できる。customer_id: ```r r038_customer_id_no_amounts``` に相当する顧客はいるが、買い物の実績がないことが分かる。
+
+```{r r038_join, eval=FALSE, echo=TRUE, cache=TRUE}
+df_joined <- dplyr::left_join(df_customer, df_receipt_z_excluded, by='customer_id')
+df_joined_nas <- df_joined %>%
+    dplyr::filter(is.na(amount))
+df_joined_nas %>%
+    head(3)
+customer_id_no_amounts <- df_joined_nas$customer_id[1]
+customer_id_no_amounts
+df_customer %>%
+    dplyr::filter(customer_id == customer_id_no_amounts)
+df_receipt_z_excluded %>%
+    dplyr::filter(customer_id == customer_id_no_amounts)
+```
+
+```{r r038_join_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_joined <- dplyr::left_join(df_customer, df_receipt_z_excluded, by='customer_id')
+
+df_joined_nas <- df_joined %>%
+    dplyr::filter(is.na(amount))
+df_joined_nas %>%
+    head(3) %>% kable() %>% kable_styling()
+customer_id_no_amounts <- df_joined_nas$customer_id[1]
+df_customer %>%
+    dplyr::filter(customer_id == customer_id_no_amounts) %>%
+    kable() %>% kable_styling()
+
+df_receipt_z_excluded %>%
+    dplyr::filter(customer_id == customer_id_no_amounts) %>%
+    kable() %>% kable_styling()
+```
+
+### R-039
+
+完全外部結合とはfull joinのことですよね。そのものずばり **dplyr::full_join** を使う。
+
+```{r r039, eval=FALSE, echo=TRUE, cache=TRUE}
+df_r039 <- df_receipt_z_excluded %>%
+    dplyr::select(c('customer_id', 'sales_ymd', 'amount')) %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(n_day=NROW(unique(sales_ymd)), amount=sum(amount)) %>%
+    dplyr::ungroup() %>%
+    dplyr::arrange(desc(n_day)) %>%
+    dplyr::arrange(desc(amount))
+
+dplyr::full_join(df_r039 %>% dplyr::top_n(20, n_day),
+                 df_r039 %>% dplyr::top_n(20, amount))
+```
+
+```{r r039_join_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_r039 <- df_receipt_z_excluded %>%
+    dplyr::select(c('customer_id', 'sales_ymd', 'amount')) %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(n_day=NROW(unique(sales_ymd)), amount=sum(amount)) %>%
+    dplyr::ungroup() %>%
+    dplyr::arrange(desc(n_day)) %>%
+    dplyr::arrange(desc(amount))
+
+dplyr::full_join(df_r039 %>% dplyr::top_n(20, n_day),
+                 df_r039 %>% dplyr::top_n(20, amount)) %>%
+    kable() %>% kable_styling()
+```
