@@ -1406,3 +1406,203 @@ df_customer %>%
     kable() %>% kable_styling()
 ```
 
+## 数値変換
+
+### R-059
+
+**scale** で、平均0、標準偏差1にする。
+
+```{r r059, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt_z_excluded %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(amount_standardized=as.vector(scale(amount)))
+```
+
+```{r r059_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_r059 <- df_receipt_z_excluded %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(amount_standardized=as.vector(scale(amount)))
+df_r059 %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+```{r r059_confirm, eval=TRUE, echo=TRUE, cache=TRUE}
+mean(df_r059$amount_standardized)
+sd(df_r059$amount_standardized)
+```
+
+### R-060
+
+**scale** で、平均0、標準偏差1にする。
+
+```{r r060, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt_z_excluded %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(amount_standardized=as.vector(scales::rescale(amount, c(0, 1))))
+```
+
+```{r r060_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_r060 <- df_receipt_z_excluded %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(amount_standardized=as.vector(scales::rescale(amount, c(0, 1))))
+df_r060 %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+```{r r060_confirm, eval=TRUE, echo=TRUE, cache=TRUE}
+range(df_r060$amount_standardized)
+```
+
+### R-061, R-062
+
+```{r r061, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt_z_excluded %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(amount_log=log10(amount))
+```
+
+```{r r061_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt_z_excluded %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(amount_log=log10(amount)) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+```{r r062, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt_z_excluded %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(amount_log=log(amount))
+```
+
+```{r r062_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt_z_excluded %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(amount_log=log(amount)) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+## 四則演算
+
+### R-063
+
+```{r r063, eval=FALSE, echo=TRUE, cache=TRUE}
+df_product %>%
+    dplyr::mutate(profit=unit_price-unit_cost)
+```
+
+```{r r063_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_product %>%
+    dplyr::mutate(profit=unit_price-unit_cost) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+### R-064
+
+**na.omit()** でNAを除いておく。
+
+```{r r064, eval=TRUE, echo=TRUE, cache=TRUE}
+(df_product %>%
+    dplyr::select(c('unit_price', 'unit_cost')) %>%
+    na.omit() %>%
+    dplyr::mutate(profit=(unit_price-unit_cost)/unit_cost))$profit %>%
+    mean()
+```
+
+**na.omit()** がないと結果はNAになる。
+
+```{r r064_na, eval=TRUE, echo=TRUE, cache=TRUE}
+(df_product %>%
+    dplyr::select(c('unit_price', 'unit_cost')) %>%
+    dplyr::mutate(profit=(unit_price-unit_cost)/unit_cost))$profit %>%
+    mean()
+```
+
+### R-065, R-066, R-067
+
+NAに対する計算結果はNAになるので、特に対処しない。
+
+```{r r065, eval=FALSE, echo=TRUE, cache=TRUE}
+df_r065 <- df_product %>%
+    dplyr::mutate(unit_price_floor=floor(unit_cost * 1.3),
+                  unit_price_round=round(unit_cost * 1.3),
+                  unit_price_ceiling=ceiling(unit_cost * 1.3))
+```
+
+```{r r065_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_r065 <- df_product %>%
+    dplyr::mutate(unit_price_floor=floor(unit_cost * 1.3),
+                  unit_price_round=round(unit_cost * 1.3),
+                  unit_price_ceiling=ceiling(unit_cost * 1.3))
+df_r065 %>%
+    dplyr::select(starts_with('unit')) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+```{r r065_confirm, eval=TRUE, echo=TRUE, cache=TRUE}
+df_r065 %>%
+    dplyr::filter(is.na(unit_cost)) %>%
+    dplyr::select(starts_with('unit')) %>%
+    head(3) %>% kable() %>% kable_styling()
+```
+
+### R-068
+
+```{r r068, eval=FALSE, echo=TRUE, cache=TRUE}
+df_product %>%
+    dplyr::mutate(price_including_tax=floor(unit_price * 1.1))
+```
+
+```{r r068_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_product %>%
+    dplyr::mutate(price_including_tax=floor(unit_price * 1.1)) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+### R-069
+
+```{r r069, eval=FALSE, echo=TRUE, cache=TRUE}
+df_r069_joined <- dplyr::inner_join(df_receipt, df_product)
+dplyr::inner_join(df_r069_joined %>%
+        dplyr::group_by(customer_id) %>%
+        dplyr::filter(category_major_cd=='07') %>%
+        dplyr::summarize(amount_07=sum(amount)) %>%
+        dplyr::ungroup(),
+        df_r069_joined %>%
+        dplyr::group_by(customer_id) %>%
+        dplyr::summarize(amount_sum=sum(amount)) %>%
+        dplyr::ungroup(),
+    by='customer_id') %>%
+    dplyr::mutate(amount_ratio=amount_07/amount_sum)
+```
+
+```{r r069_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_r069_joined <- dplyr::inner_join(df_receipt, df_product)
+dplyr::inner_join(df_r069_joined %>%
+        dplyr::group_by(customer_id) %>%
+        dplyr::filter(category_major_cd=='07') %>%
+        dplyr::summarize(amount_07=sum(amount)) %>%
+        dplyr::ungroup(),
+        df_r069_joined %>%
+        dplyr::group_by(customer_id) %>%
+        dplyr::summarize(amount_sum=sum(amount)) %>%
+        dplyr::ungroup(),
+    by='customer_id') %>%
+    dplyr::mutate(amount_ratio=amount_07/amount_sum) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
