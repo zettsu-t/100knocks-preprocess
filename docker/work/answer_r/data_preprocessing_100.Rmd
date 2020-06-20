@@ -966,3 +966,238 @@ dplyr::full_join(df_r039 %>% dplyr::top_n(20, n_day),
                  df_r039 %>% dplyr::top_n(20, amount)) %>%
     kable() %>% kable_styling()
 ```
+
+### R-040
+
+直積(Cartesian product) は **tidyr::crossing** でとれる。
+
+```{r r040, eval=TRUE, echo=TRUE, cache=TRUE}
+NROW(df_store)
+NROW(df_product)
+NROW(tidyr::crossing(df_store, df_product))
+```
+
+### R-041
+
+**lag** をつかって、まとめて計算する。
+
+```{r r041, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt %>%
+    dplyr::arrange(sales_ymd) %>%
+    dplyr::group_by(sales_ymd) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(diff=amount-lag(amount, 1)) %>%
+    head(10)
+```
+
+```{r r041_join_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_r041 <- df_receipt %>%
+    dplyr::arrange(sales_ymd) %>%
+    dplyr::group_by(sales_ymd) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(diff=amount-lag(amount, 1))
+df_r041 %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+```{r r041_confirm, eval=TRUE, echo=TRUE, cache=TRUE}
+assertthat::assert_that(all((head(df_r041$amount, -1) + tail(df_r041$diff, -1)) == tail(df_r041$amount, -1)))
+```
+
+### R-042
+
+**lag** をつかって、まとめて計算する。
+
+```{r r042, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt %>%
+    dplyr::arrange(sales_ymd) %>%
+    dplyr::group_by(sales_ymd) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(yesterday=lag(amount, 1),
+                  two_days_ago=lag(amount, 2),
+                  three_days_ago=lag(amount, 3)) %>%
+    head(10)
+```
+
+```{r r042_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt %>%
+    dplyr::arrange(sales_ymd) %>%
+    dplyr::group_by(sales_ymd) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(yesterday=lag(amount, 1),
+                  two_days_ago=lag(amount, 2),
+                  three_days_ago=lag(amount, 3)) %>%
+    head(10)
+```
+
+## 縦横変換
+
+### R-043
+
+**tidyr::pivot_wider** を使って、テーブルを横長にする。
+
+```{r r043, eval=TRUE, echo=TRUE, cache=TRUE}
+df_sales_summary <- dplyr::inner_join(dplyr::inner_join(df_receipt, df_customer) %>%
+    dplyr::group_by(gender, age) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup(),
+    tibble(gender=c('男性', '女性', '不明'), gender_id=c(0, 1, 9))) %>%
+    dplyr::select(-gender) %>%
+    dplyr::rename(gender=gender_id) %>%
+    tidyr::pivot_wider(id_cols=age, names_from=gender, values_from=amount)
+```
+
+```{r r043_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_sales_summary %>% head(10) %>% kable() %>% kable_styling()
+```
+
+12歳について確認する。
+
+```{r r043_confirm, eval=TRUE, echo=TRUE, cache=TRUE}
+NROW(dplyr::inner_join(df_receipt, df_customer) %>% dplyr::filter(age==12 & gender=='男性'))
+sum((dplyr::inner_join(df_receipt, df_customer) %>% dplyr::filter(age==12 & gender=='女性'))$amount)
+sum((dplyr::inner_join(df_receipt, df_customer) %>% dplyr::filter(age==12 & gender=='不明'))$amount)
+```
+
+### R-044
+
+**tidyr::pivot_wider** を使って、テーブルを横長にする。
+
+```{r r044, eval=FALSE, echo=TRUE, cache=TRUE}
+df_sales_summary %>%
+    tidyr::pivot_longer(cols=setdiff(colnames(df_sales_summary), 'age'), names_to='gender') %>%
+    dplyr::mutate(gender=as.integer(gender)) %>%
+    dplyr::mutate(gender=(gender > 1) * 90 + gender %% 10)
+```
+
+```{r r044_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_sales_summary %>%
+    tidyr::pivot_longer(cols=setdiff(colnames(df_sales_summary), 'age'), names_to='gender') %>%
+    dplyr::mutate(gender=as.integer(gender)) %>%
+    dplyr::mutate(gender=(gender > 1) * 90 + gender %% 10) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+## データ変換
+
+### R-045
+
+**format** で文字列に変換する。
+
+```{r r045, eval=FALSE, echo=TRUE, cache=TRUE}
+df_customer %>%
+    dplyr::mutate(birth_day=format(as.Date(birth_day), format="%Y%m%d")) %>%
+    dplyr::select(c('customer_id', 'birth_day')) %>%
+    head(10)
+```
+
+```{r r045_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_customer %>%
+    dplyr::mutate(birth_day=format(as.Date(birth_day), format="%Y%m%d")) %>%
+    dplyr::select(c('customer_id', 'birth_day')) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+### R-046
+
+ここではlubridateパッケージを使う。
+
+```{r r046, eval=FALSE, echo=TRUE, cache=TRUE}
+df_customer %>%
+    dplyr::mutate(application_date=lubridate::parse_date_time(application_date ,"%y%m%d")) %>%
+    dplyr::select(c('customer_id', 'application_date')) %>%
+    head(10)
+```
+
+```{r r046_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_customer %>%
+    dplyr::mutate(application_date=lubridate::parse_date_time(application_date ,"%y%m%d")) %>%
+    dplyr::select(c('customer_id', 'application_date')) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+### R-047
+
+実は8桁の数字を、そのまま文字列のように入力できる。
+
+```{r r047, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt %>%
+    dplyr::mutate(sales_ymd=lubridate::parse_date_time(sales_ymd ,"%y%m%d")) %>%
+    dplyr::select(c('sales_ymd', 'receipt_no', 'receipt_sub_no')) %>%
+    head(10)
+```
+
+```{r r047_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt %>%
+    dplyr::mutate(sales_ymd=lubridate::parse_date_time(sales_ymd ,"%y%m%d")) %>%
+    dplyr::select(c('sales_ymd', 'receipt_no', 'receipt_sub_no')) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+### R-048
+
+実は8桁の数字を、そのまま文字列のように入力できる。
+
+```{r r048, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt %>%
+    dplyr::mutate(sales_epoch=lubridate::as_datetime(sales_epoch, origin = lubridate::origin)) %>%
+    dplyr::select(c('sales_epoch', 'receipt_no', 'receipt_sub_no')) %>%
+    head(10)
+```
+
+```{r r048_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt %>%
+    dplyr::mutate(sales_epoch=lubridate::as_datetime(sales_epoch, origin = lubridate::origin)) %>%
+    dplyr::select(c('sales_epoch', 'receipt_no', 'receipt_sub_no')) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+なのですが、なぜかデータが9年ずれていますね。
+
+### R-049, R-050, R-051
+
+**lubridate::year** で年を取り出す。同様に **lubridate::month** で月を、 **lubridate::day** で日を取り出す。
+
+```{r r049, eval=FALSE, echo=TRUE, cache=TRUE}
+df_r049 <- df_receipt %>%
+    dplyr::mutate(sales_date=lubridate::as_datetime(sales_epoch, origin = lubridate::origin)) %>%
+    dplyr::mutate(year=lubridate::year(sales_date),
+                  month=sprintf('%02d', year=lubridate::month(sales_date)),
+                  day=sprintf('%02d', year=lubridate::day(sales_date)))
+
+df_r049 %>%
+    dplyr::select(c('year', 'receipt_no', 'receipt_sub_no')) %>%
+    head(10)
+
+df_r049 %>%
+    dplyr::select(c('month', 'receipt_no', 'receipt_sub_no')) %>%
+    head(10)
+
+df_r049 %>%
+    dplyr::select(c('day', 'receipt_no', 'receipt_sub_no')) %>%
+    head(10)
+```
+
+```{r r049_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_r049 <- df_receipt %>%
+    dplyr::mutate(sales_date=lubridate::as_datetime(sales_epoch, origin = lubridate::origin)) %>%
+    dplyr::mutate(year=lubridate::year(sales_date),
+                  month=sprintf('%02d', year=lubridate::month(sales_date)),
+                  day=sprintf('%02d', year=lubridate::day(sales_date)))
+
+df_r049 %>%
+    dplyr::select(c('year', 'receipt_no', 'receipt_sub_no')) %>%
+    head(10) %>% kable() %>% kable_styling()
+
+df_r049 %>%
+    dplyr::select(c('month', 'receipt_no', 'receipt_sub_no')) %>%
+    head(10) %>% kable() %>% kable_styling()
+
+df_r049 %>%
+    dplyr::select(c('day', 'receipt_no', 'receipt_sub_no')) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
