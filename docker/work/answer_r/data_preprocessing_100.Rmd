@@ -40,6 +40,7 @@ urlcolor: blue
 ```{r load_packages, echo=TRUE, warning=FALSE, message=FALSE, cache=FALSE}
 library(tidyverse)
 library(dplyr)
+library(ggplot2)
 library(purrr)
 library(readr)
 library(stringr)
@@ -1776,3 +1777,233 @@ df_customer %>%
     kable() %>% kable_styling()
 ``````
 
+## 外れ値・異常値
+
+### R-077, R-078
+
+ベタに求める。
+
+```{r r077, eval=TRUE, echo=TRUE, cache=TRUE}
+df_r077 <- df_receipt_z_excluded %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup()
+
+amount_mean <- mean(df_r077$amount)
+amount_sd <- sd(df_r077$amount)
+amount_minus_3sd <- amount_mean - 3.0 * amount_sd
+amount_plus_3sd <- amount_mean + 3.0 * amount_sd
+
+amount_qs <- quantile(df_r077$amount, c(0.25, 0.5, 0.75))
+amount_lower <- amount_qs[1] - (amount_qs[2] - amount_qs[1]) * 1.5
+amount_upper <- amount_qs[3] + (amount_qs[3] - amount_qs[2]) * 1.5
+
+df_r077_sd <- df_r077 %>%
+    dplyr::filter((amount < amount_minus_3sd) | (amount > amount_plus_3sd))
+
+df_r078_quantile <- df_r077 %>%
+    dplyr::filter((amount < amount_lower) | (amount > amount_upper))
+```
+
+平均と+/- 3標準偏差はこのようになる。
+
+```{r r077_print, eval=TRUE, echo=FALSE, message=FALSE, cache=TRUE}
+df_r077_sd %>%
+    head(10) %>%
+    kable() %>% kable_styling()
+
+g <- ggplot(df_r077, aes(x=amount))
+g <- g + geom_histogram()
+g <- g + geom_vline(xintercept=c(amount_minus_3sd, amount_mean, amount_plus_3sd), color='royalblue2')
+plot(g)
+```
+
+25, 50, 75%分位点と、1.5IQRを用いた閾値はこのようになる。
+
+```{r r078_print, eval=TRUE, echo=FALSE, message=FALSE, cache=TRUE}
+df_r078_quantile %>%
+    head(10) %>%
+    kable() %>% kable_styling()
+
+g <- ggplot(df_r077, aes(x=amount))
+g <- g + geom_histogram()
+g <- g + geom_vline(xintercept=amount_qs, color='orchid2')
+g <- g + geom_vline(xintercept=c(amount_lower, amount_upper), color='orchid2', linetype='dashed')
+plot(g)
+```
+
+まとめて描くとこうなる。1.5IQRを用いた外れ値は、3標準偏差より範囲が狭い。
+
+```{r r077_078_print, eval=TRUE, echo=FALSE, message=FALSE, cache=TRUE}
+g <- ggplot(df_r077, aes(x=amount))
+g <- g + geom_histogram()
+g <- g + geom_vline(xintercept=c(amount_minus_3sd, amount_mean, amount_plus_3sd), color='royalblue2')
+g <- g + geom_vline(xintercept=amount_qs, color='orchid2')
+g <- g + geom_vline(xintercept=c(amount_lower, amount_upper), color='orchid2', linetype='dashed')
+plot(g)
+```
+
+## 欠損値
+
+### R-079
+
+列名をmapする。~ とplaceholdr (.x)を用いることで、即席の関数を定義できる。
+
+```{r r079, eval=FALSE, echo=TRUE, cache=TRUE}
+df_r079 <- tibble(name=colnames(df_product),
+       num_na=purrr::map_int(colnames(df_product), ~ sum(is.na(df_product[,.x]))))
+```
+
+```{r r079_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_r079 <- tibble(name=colnames(df_product),
+       num_na=purrr::map_int(colnames(df_product), ~ sum(is.na(df_product[,.x]))))
+df_r079 %>%
+    kable() %>% kable_styling()
+```
+
+### R-080
+
+これまでも用いてきた **na.omit** で、欠測のある行=標本を除く。
+
+```{r r080_print, eval=TRUE, echo=TRUE, cache=TRUE}
+NROW(df_product)
+NROW(na.omit(df_product))
+assertthat::assert_that(max(df_r079$num_na) == (NROW(df_product) - NROW(na.omit(df_product))))
+```
+
+### R-081
+
+これまでも用いてきた **na.omit** で、欠測のある行=標本を除く。真理値のsumを取ると、TRUEの数になる。
+
+```{r r081_print, eval=TRUE, echo=TRUE, cache=TRUE}
+df_product2 <- df_product
+df_product2$unit_price[is.na(df_product2$unit_price)] <- round(mean(df_product2$unit_price, na.rm=TRUE))
+df_product2$unit_cost[is.na(df_product2$unit_cost)] <- round(mean(df_product2$unit_cost, na.rm=TRUE))
+assertthat::assert_that(NROW(df_product) == NROW(na.omit(df_product2)))
+assertthat::assert_that(sum(is.na(df_product2)) == 0)
+```
+
+### R-082
+
+```{r r082_print, eval=TRUE, echo=TRUE, cache=TRUE}
+df_product3 <- df_product
+df_product3$unit_price[is.na(df_product3$unit_price)] <- round(median(df_product3$unit_price, na.rm=TRUE))
+df_product3$unit_cost[is.na(df_product3$unit_cost)] <- round(median(df_product3$unit_cost, na.rm=TRUE))
+assertthat::assert_that(NROW(df_product) == NROW(na.omit(df_product3)))
+assertthat::assert_that(sum(is.na(df_product3)) == 0)
+```
+
+### R-083
+
+```{r r083_print, eval=TRUE, echo=TRUE, cache=TRUE}
+df_product4 <- df_product %>%
+    dplyr::group_by(category_small_cd) %>%
+    dplyr::mutate(unit_price=ifelse(is.na(unit_price), round(median(unit_price, na.rm=TRUE)), unit_price),
+                  unit_cost=ifelse(is.na(unit_cost), round(median(unit_cost, na.rm=TRUE)), unit_cost)) %>%
+    dplyr::ungroup()
+assertthat::assert_that(sum(is.na(df_product4)) == 0)
+```
+
+## 除算エラー対応
+
+### R-084
+
+**ifelse** を使うと、2つのベクトルの先頭から順に要素を選べる。
+
+```{r r084, eval=TRUE, echo=TRUE, cache=TRUE}
+df_joined_r084 <- dplyr::left_join(df_customer, df_receipt, by='customer_id')
+df_joined_r084$amount[is.na(df_joined_r084$amount)] <- 0
+df_joined_r084 <- df_joined_r084 %>%
+    dplyr::mutate(sales_year=lubridate::year(lubridate::parse_date_time(sales_ymd ,"%y%m%d")))
+
+df_r084_full <- df_joined_r084 %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup()
+
+df_r084_2019 <- df_joined_r084 %>%
+    dplyr::filter(sales_year==2019) %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(amount_2019=sum(amount)) %>%
+    dplyr::ungroup()
+
+df_r084 <- dplyr::left_join(df_r084_full, df_r084_2019)
+df_r084$amount_2019[is.na(df_r084$amount_2019)] <- 0
+df_r084 <- df_r084 %>%
+    dplyr::mutate(ratio=ifelse(amount > 0, amount_2019/amount, 0))
+```
+
+```{r r084_filter, eval=FALSE, echo=TRUE, cache=TRUE}
+df_r084 %>%
+    dplyr::filter(ratio > 0) %>%
+    head(10)
+```
+
+```{r r084_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_r084 %>%
+    dplyr::filter(ratio > 0) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+```{r r084_confirm, eval=TRUE, echo=TRUE, cache=TRUE}
+assertthat::assert_that(sum(is.na(df_r084)) == 0)
+```
+
+売り上げが0の顧客がどうなったか確認しよう。
+
+```{r r084_confirm_zeros, eval=FALSE, echo=TRUE, cache=TRUE}
+df_r084 %>%
+    dplyr::mutate(zeros=((amount==0) * 2 + (amount_2019==0))) %>%
+    dplyr::group_by(zeros) %>%
+    do(head(., n=1))
+    dplyr::ungroup()
+```
+
+```{r r084_print_zeros, eval=TRUE, echo=FALSE, cache=TRUE}
+df_r084 %>%
+    dplyr::mutate(zeros=((amount==0) * 2 + (amount_2019==0))) %>%
+    dplyr::group_by(zeros) %>%
+    do(head(., n=1)) %>%
+    dplyr::ungroup() %>%
+    kable() %>% kable_styling()
+```
+
+## 座標データ
+
+### R-085
+
+値1個の平均はその値が返るので、郵便番号に対応する緯度経度が複数あるかどうかは確認しなくてよい。
+
+```{r r085, eval=TRUE, echo=TRUE, cache=TRUE}
+df_customer_1 <- dplyr::inner_join(df_customer,
+        dplyr::inner_join(df_customer, df_geocode, by='postal_cd') %>%
+        dplyr::select(c('postal_cd', 'longitude', 'latitude')) %>%
+        dplyr::group_by(postal_cd) %>%
+        dplyr::summarize(longitude=mean(longitude), latitude=mean(latitude)) %>%
+        dplyr::ungroup(), by='postal_cd')
+```
+
+```{r r085_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_customer_1 %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+### R-086
+
+**geosphere::distm** を使うと、緯度経度の組から、メートル単位の距離を求められる。行ごとに距離を求める処理は、 **purrrlyr::by_row** を使う。
+
+```{r r086, eval=TRUE, echo=TRUE, cache=TRUE}
+df_customer_2 <- dplyr::inner_join(df_customer_1, df_store, by=c('application_store_cd'='store_cd')) %>%
+    dplyr::rename(address_customer=address.x, address_store=address.y) %>%
+    purrrlyr::by_row(function(row_data) {
+    geosphere::distm(c(row_data$longitude.x, row_data$latitude.x),
+                     c(row_data$longitude.y, row_data$latitude.y),
+                     fun = distHaversine)[,1]
+}, .collate=c("cols"), .to = "dist") %>%
+    dplyr::select(c('customer_id', 'address_customer', 'address_store', 'dist'))
+```
+
+```{r r086_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_customer_2 %>%
+    head(10) %>% kable() %>% kable_styling()
+```
