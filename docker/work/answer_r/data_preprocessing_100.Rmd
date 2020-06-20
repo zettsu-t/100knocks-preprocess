@@ -1201,3 +1201,208 @@ df_r049 %>%
     dplyr::select(c('day', 'receipt_no', 'receipt_sub_no')) %>%
     head(10) %>% kable() %>% kable_styling()
 ```
+
+### R-052
+
+論理値を整数に変換すると、FALSEは0に、TRUEは1になる。
+
+```{r r052, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt_z_excluded %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::mutate(amount_high=as.integer(amount>2000)) %>%
+    dplyr::ungroup() %>%
+    head(10)
+```
+
+```{r r052_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt_z_excluded %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::mutate(amount_high=as.integer(amount>2000)) %>%
+    dplyr::ungroup() %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+
+
+
+### R-053
+
+** tidyr::separate** を使って文字列を分離する。
+
+```{r r053, eval=FALSE, echo=TRUE, cache=TRUE}
+dplyr::inner_join(df_customer %>%
+                  tidyr::separate(col=postal_cd, into=c('large', 'small'), '\\D') %>%
+                  dplyr::mutate(area=as.integer(large)) %>%
+                  dplyr::mutate(tokyo=as.integer((area >= 100 & area <= 209))),
+                  df_receipt) %>%
+    dplyr::group_by(tokyo) %>%
+    dplyr::count() %>%
+    dplyr::ungroup()
+```
+
+```{r r053_print, eval=TRUE, echo=FALSE, cache=TRUE}
+dplyr::inner_join(df_customer %>%
+                  tidyr::separate(col=postal_cd, into=c('large', 'small'), '\\D') %>%
+                  dplyr::mutate(area=as.integer(large)) %>%
+                  dplyr::mutate(tokyo=as.integer((area >= 100 & area <= 209))),
+                  df_receipt) %>%
+    dplyr::group_by(tokyo) %>%
+    dplyr::count() %>%
+    dplyr::ungroup() %>%
+    kable() %>% kable_styling()
+```
+
+### R-054
+
+正規表現に一致する文字列だけ取り出すことで、都道府県を取り出す。正規表現は実行時に作ることができる。
+
+```{r r054, eval=FALSE, echo=TRUE, cache=TRUE}
+prefectures <- c('埼玉県', '千葉県', '東京都', '神奈川県')
+prefecture_pattern <- paste0('^(',  paste(prefectures, sep='', collapse='|'), ')')
+dplyr::inner_join(df_customer %>%
+                  dplyr::mutate(pref=stringr::str_extract(address, prefecture_pattern)),
+                  tibble(pref=prefectures, pref_id=c('11', '12', '13', '14'))) %>%
+                  dplyr::select(c('customer_id', 'address', 'pref', 'pref_id')) %>%
+                  head(10)
+```
+
+```{r r054_print, eval=TRUE, echo=FALSE, cache=TRUE}
+prefectures <- c('埼玉県', '千葉県', '東京都', '神奈川県')
+prefecture_pattern <- paste0('^(',  paste(prefectures, sep='', collapse='|'), ')')
+dplyr::inner_join(df_customer %>%
+                  dplyr::mutate(pref=stringr::str_extract(address, prefecture_pattern)),
+                  tibble(pref=prefectures, pref_id=c('11', '12', '13', '14'))) %>%
+                  dplyr::select(c('customer_id', 'address', 'pref', 'pref_id')) %>%
+                  head(10) %>%
+    kable() %>% kable_styling()
+```
+
+### R-055
+
+**ntile** を使って25%ごとに区切る。
+
+```{r r055, eval=FALSE, echo=TRUE, cache=TRUE}
+df_r055 <- df_receipt %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(rank=ntile(amount, 4))
+
+quantile(df_r055$amount, c(0, 0.25, 0.5, 0.75, 1))
+```
+
+```{r r055_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_r055 <- df_receipt %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(rank=ntile(amount, 4))
+
+df_r055 %>%
+    head(10) %>% kable() %>% kable_styling()
+
+quantile(df_r055$amount, c(0, 0.25, 0.5, 0.75, 1))
+```
+
+dplyr::mutate(ntile(x, 4)) だと第3四分位の最大が3652、第4四分位の最小が3653になりますが、quantile(c(0.75))は3651.0です。データは小さい順に3650, 3652なので、1個データがずれています。
+
+```{r r055_confirm1, eval=TRUE, echo=FALSE, cache=TRUE}
+purrr::map(1:4, function(x) {
+    vs <- (df_r055 %>% dplyr::filter(rank==x))$amount
+    amount_range <- range(vs)
+    tibble(rank=x, count=NROW(vs), amount_min=amount_range[1], amount_max=amount_range[2])
+}) %>% dplyr::bind_rows() %>%
+    kable() %>% kable_styling()
+```
+
+```{r r055_confirm2, eval=TRUE, echo=TRUE, cache=TRUE}
+sorted_amount <- sort(df_r055$amount)
+sorted_amount[max(which(sorted_amount <= quantile(df_r055$amount, 0.75))):
+              (max(which(sorted_amount <= max((df_r055 %>% dplyr::filter(rank==3))$amount)))+1)]
+```
+
+### R-056
+
+**dplyr::mutate** には関数を渡すことができる。
+
+```{r r056, eval=FALSE, echo=TRUE, cache=TRUE}
+get_age_group <- function(xs) {
+    purrr::map_chr(xs, function(x) {
+        if (x >= 60) {
+            '60+'
+        } else {
+            sprintf('%02ds', 10 * (x %/% 10))
+        }
+    })
+}
+
+df_customer %>%
+    dplyr::mutate(age_group=get_age_group(age)) %>%
+    dplyr::select(c('customer_id', 'birth_day', 'age_group'))
+```
+
+```{r r056_print, eval=TRUE, echo=FALSE, cache=TRUE}
+get_age_group <- function(xs) {
+    purrr::map_chr(xs, function(x) {
+        if (x >= 60) {
+            '60+'
+        } else {
+            sprintf('%02ds', 10 * (x %/% 10))
+        }
+    })
+}
+
+df_age <- df_customer %>%
+    dplyr::mutate(age_group=get_age_group(age)) %>%
+    dplyr::select(c('customer_id', 'birth_day', 'age_group'))
+
+df_age %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+### R-057
+
+値をつなげてカテゴリにするのが簡単である。
+
+```{r r057, eval=FALSE, echo=TRUE, cache=TRUE}
+df_customer %>%
+    dplyr::mutate(age_group=get_age_group(age)) %>%
+    dplyr::select(c('customer_id', 'birth_day', 'age_group', 'gender')) %>%
+    dplyr::mutate(group=paste(age_group, gender, sep='_')) %>%
+    head(10)
+```
+
+```{r r057_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_customer %>%
+    dplyr::mutate(age_group=get_age_group(age)) %>%
+    dplyr::select(c('customer_id', 'birth_day', 'age_group', 'gender')) %>%
+    dplyr::mutate(group=paste(age_group, gender, sep='_')) %>%
+    head(10) %>%
+    kable() %>% kable_styling()
+```
+
+### R-058
+
+ここでは **mlr** パッケージを使う。
+
+```{r r058, eval=FALSE, echo=TRUE, cache=TRUE}
+df_customer %>%
+    dplyr::select(c('customer_id', 'gender_cd')) %>%
+    dplyr::mutate(gender_code=as.factor(as.character(gender_cd))) %>%
+    mlr::createDummyFeatures(cols='gender_code') %>%
+    dplyr::select(c('customer_id') | starts_with('gender_code')) %>%
+    head(10)
+```
+
+```{r r058_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_customer %>%
+    dplyr::select(c('customer_id', 'gender_cd')) %>%
+    dplyr::mutate(gender_code=as.factor(as.character(gender_cd))) %>%
+    mlr::createDummyFeatures(cols='gender_code') %>%
+    dplyr::select(c('customer_id') | starts_with('gender_code')) %>%
+    head(10) %>%
+    kable() %>% kable_styling()
+```
+
