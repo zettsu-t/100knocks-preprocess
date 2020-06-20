@@ -1224,9 +1224,6 @@ df_receipt_z_excluded %>%
     head(10) %>% kable() %>% kable_styling()
 ```
 
-
-
-
 ### R-053
 
 ** tidyr::separate** を使って文字列を分離する。
@@ -1576,6 +1573,8 @@ df_product %>%
 
 ### R-069
 
+category_major_cd=='07' を買っていない顧客は、filter と inner join で除外できる。
+
 ```{r r069, eval=FALSE, echo=TRUE, cache=TRUE}
 df_r069_joined <- dplyr::inner_join(df_receipt, df_product)
 dplyr::inner_join(df_r069_joined %>%
@@ -1593,7 +1592,7 @@ dplyr::inner_join(df_r069_joined %>%
 
 ```{r r069_print, eval=TRUE, echo=FALSE, cache=TRUE}
 df_r069_joined <- dplyr::inner_join(df_receipt, df_product)
-dplyr::inner_join(df_r069_joined %>%
+df_r069 <- dplyr::inner_join(df_r069_joined %>%
         dplyr::group_by(customer_id) %>%
         dplyr::filter(category_major_cd=='07') %>%
         dplyr::summarize(amount_07=sum(amount)) %>%
@@ -1603,6 +1602,101 @@ dplyr::inner_join(df_r069_joined %>%
         dplyr::summarize(amount_sum=sum(amount)) %>%
         dplyr::ungroup(),
     by='customer_id') %>%
-    dplyr::mutate(amount_ratio=amount_07/amount_sum) %>%
+    dplyr::mutate(amount_ratio=amount_07/amount_sum)
+df_r069 %>%
     head(10) %>% kable() %>% kable_styling()
+```
+
+```{r r069_confirm, eval=TRUE, echo=TRUE, cache=TRUE}
+assertthat::assert_that(all(df_r069$amount_07 > 0))
+assertthat::assert_that(all(df_r069$amount_ratio > 0))
+```
+
+## 日付型の計算
+
+### R-070, R-071, R-072, R-073
+
+準備として、日付型に変更して、customer_id でinner join する。
+
+```{r r070_setup, eval=TRUE, echo=TRUE, cache=TRUE}
+df_r070_date <- dplyr::inner_join(df_receipt %>%
+    dplyr::mutate(sales_ymd=lubridate::parse_date_time(sales_ymd ,"%y%m%d")),
+    df_customer %>%
+    dplyr::mutate(application_date=lubridate::parse_date_time(application_date ,"%y%m%d"), units='days')) %>%
+    dplyr::mutate(elapsed=lubridate::interval(application_date, sales_ymd))
+```
+
+```{r r070, eval=FALSE, echo=TRUE, cache=TRUE}
+df_r070_date %>%
+    dplyr::mutate(day=elapsed %/% days(),
+                  month=elapsed %/% months(1),
+                  year=elapsed %/% years(),
+                  second=elapsed %/% seconds()) %>%
+    dplyr::select(c('customer_id', 'application_date', 'sales_ymd', 'day', 'month', 'year', 'second'))
+```
+
+```{r r070_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_r070 <- df_r070_date %>%
+    dplyr::mutate(day=elapsed %/% days(),
+                  month=elapsed %/% months(1),
+                  year=elapsed %/% years(),
+                  second=elapsed %/% seconds()) %>%
+    dplyr::select(c('customer_id', 'application_date', 'sales_ymd', 'day', 'month', 'year', 'second'))
+
+df_r070 %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+年と月をまたぐ辺りの処理を確認しよう。2016年はうるう年であることに注意する。
+
+```{r r070_confirm, eval=TRUE, echo=TRUE, cache=TRUE}
+df_r070 %>%
+    dplyr::filter((day >= 364) & (day <= 367)) %>%
+    dplyr::group_by(day) %>%
+    do(head(., n=3)) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(second_day=second / (60 * 60 * 24)) %>%
+    kable() %>% kable_styling()
+
+df_r070 %>%
+    dplyr::filter((day >= 394) & (day <= 397)) %>%
+    dplyr::group_by(day) %>%
+    do(head(., n=3)) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(second_day=second / (60 * 60 * 24)) %>%
+    kable() %>% kable_styling()
+```
+
+### R-074
+
+難易度が三ッ星だが、 **lubridate::wday** を使うと、ある曜日を1としたときの経過日数を数えられる。月曜日は week_start=1 にする。
+
+```{r r074, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt %>%
+    dplyr::mutate(sales_ymd=lubridate::parse_date_time(sales_ymd ,"%y%m%d")) %>%
+    dplyr::mutate(wday=lubridate::wday(sales_ymd, week_start=1) - 1) %>%
+    dplyr::mutate(week_start=sales_ymd - days(wday)) %>%
+    dplyr::select(c('week_start', 'sales_ymd', 'wday'))
+```
+
+```{r r074_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_r074 <- df_receipt %>%
+    dplyr::mutate(sales_ymd=lubridate::parse_date_time(sales_ymd ,"%y%m%d")) %>%
+    dplyr::mutate(wday=lubridate::wday(sales_ymd, week_start=1) - 1) %>%
+    dplyr::mutate(week_start=sales_ymd - days(wday)) %>%
+    dplyr::select(c('week_start', 'sales_ymd', 'wday'))
+
+df_r074 %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+カレンダーを確認すると、確か月曜日になっている。
+
+```{r r074_confirm, eval=TRUE, echo=TRUE, cache=TRUE}
+df_r074 %>%
+    dplyr::group_by(wday) %>%
+    do(head(., n=2)) %>%
+    dplyr::ungroup() %>%
+    dplyr::arrange(wday) %>%
+    kable() %>% kable_styling()
 ```
