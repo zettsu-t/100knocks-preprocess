@@ -20,7 +20,7 @@ urlcolor: blue
 
 [データサイエンス100本ノック（構造化データ加工編）](https://github.com/The-Japan-DataScientist-Society/100knocks-preprocess)の、R版についての私の解答です。正解例は公式をみてください。
 
-注意: まだ作成中です。公式解答集はみていませんので、答えが間違っている可能性も、もっとよい書き方もあります。
+公式解答集と比較し、既知の誤りは訂正してあります。R-038, R-039, R-078, R-093については検討中です。R-089, 090, 091 はあっていると思いますが、乱数なので再現できないのと、公式解答集が私の知らないパッケージを用いているのでこれから調べます。
 
 浮動小数を==で比較しているのは、本当は **dplyr::near** などを使うのが正しいです。
 
@@ -50,6 +50,7 @@ library(tidyr)
 library(data.table)
 library(lubridate)
 library(assertthat)
+library(functional)
 library(mlr)
 library(purrrlyr)
 library(scales)
@@ -739,7 +740,7 @@ df_receipt_r026 %>%
 
 customer_id: ```r df_receipt_r025$customer_id[1]``` が除かれて customer_id: ```r df_receipt_r026$customer_id[1]``` が残ったので、正しそうだ。
 
-公式解答集は、 **dplyr::summarise** maxとmin と求めている。その方がきれいなコードだ。
+公式解答集は、 **dplyr::summarise** で maxとminを使って求めている。その方がきれいなコードだ。
 
 ### R-027
 
@@ -790,6 +791,8 @@ summarize_receipt(median) %>% kable() %>% kable_styling()
 
 Rには最頻値を求める関数がない。代わりに **dplyr::count** で数えて、最も多いものを **dplyr::top_n** で選ぶ。
 
+公式解答集では、 **table()** を用いている。できればRでforは避けたい。
+
 ```{r r029, eval=FALSE, echo=TRUE, cache=TRUE}
 df_receipt_mode <- df_receipt %>%
     dplyr::select(c('store_cd', 'product_cd')) %>%
@@ -833,22 +836,34 @@ head(counts_r029, 10)
 
 ### R-030
 
-```{r r030, eval=FALSE, echo=TRUE, cache=TRUE}
-summarize_receipt(var)
+ここでは標本分散が欲しい。Rは不偏分散を返すので、一工夫要る。
+
+```{r r030_setup, eval=TRUE, echo=TRUE, cache=FALSE}
+var_sample <- function(xs) {
+    var(xs) * (NROW(xs) - 1) / NROW(xs)
+}
+```
+
+```{r r030, eval=FALSE, echo=TRUE, cache=FALSE}
+summarize_receipt(var_sample)
 ```
 
 ```{r r030_print, eval=TRUE, echo=FALSE, cache=TRUE}
-summarize_receipt(var) %>% kable() %>% kable_styling()
+summarize_receipt(var_sample) %>% kable() %>% kable_styling()
 ```
 
 ### R-031
 
+```{r r031_setup, eval=TRUE, echo=TRUE, cache=FALSE}
+sd_sample <- functional::Compose(var_sample, sqrt)
+```
+
 ```{r r031, eval=FALSE, echo=TRUE, cache=TRUE}
-summarize_receipt(sd)
+summarize_receipt(sd_sample)
 ```
 
 ```{r r031_print, eval=TRUE, echo=FALSE, cache=TRUE}
-summarize_receipt(sd) %>% kable() %>% kable_styling()
+summarize_receipt(sd_sample) %>% kable() %>% kable_styling()
 ```
 
 ### R-032
@@ -1108,6 +1123,8 @@ df_receipt %>%
 
 公式解答集では **tidyr::pivot_wider** の代わりに、 **tidyr::spread** を用いている。tidyrのドキュメントにはtidyr::pivot_widerを用いるように書いてある。
 
+公式解答集では小数点以下の切り捨てに **trunc** を用いている。年齢は非負なので、 **floor** と同じである。
+
 ```{r r043, eval=TRUE, echo=TRUE, cache=TRUE}
 df_sales_summary <- dplyr::inner_join(dplyr::inner_join(df_receipt, df_customer) %>%
     dplyr::mutate(age=round(10*round(age %/% 10))) %>%
@@ -1321,9 +1338,9 @@ df_receipt_z_excluded %>%
 
 ### R-053
 
-** tidyr::separate** を使って文字列を分離する。
+**tidyr::separate** を使って文字列を分離する。customer_id を数えるので、 **dplyr::distinct**する。
 
-処理は公式解答集と同様だが、私の解答はR-052と同様に論理値から整数への変換を利用している。それと郵便番号の上三桁は中間変数として持って置き、不要なら後で消す方がパイプライン処理としてすんなり書ける。
+処理は公式解答集と同様だが、 **summarise(n_distinct)** を用いている。私の解答はR-052と同様に論理値から整数への変換を利用している。それと郵便番号の上三桁は中間変数として持って置き、不要なら後で消す方がパイプライン処理としてすんなり書ける。
 
 ```{r r053, eval=FALSE, echo=TRUE, cache=TRUE}
 dplyr::inner_join(df_customer %>%
@@ -1331,6 +1348,7 @@ dplyr::inner_join(df_customer %>%
                   dplyr::mutate(area=as.integer(large)) %>%
                   dplyr::mutate(tokyo=as.integer((area >= 100 & area <= 209))),
                   df_receipt) %>%
+    dplyr::distinct(customer_id, .keep_all=TRUE) %>%
     dplyr::group_by(tokyo) %>%
     dplyr::count() %>%
     dplyr::ungroup()
@@ -1342,6 +1360,7 @@ dplyr::inner_join(df_customer %>%
                   dplyr::mutate(area=as.integer(large)) %>%
                   dplyr::mutate(tokyo=as.integer((area >= 100 & area <= 209))),
                   df_receipt) %>%
+    dplyr::distinct(customer_id, .keep_all=TRUE) %>%
     dplyr::group_by(tokyo) %>%
     dplyr::count() %>%
     dplyr::ungroup() %>%
@@ -1935,14 +1954,23 @@ amount_minus_3sd <- amount_mean - 3.0 * amount_sd
 amount_plus_3sd <- amount_mean + 3.0 * amount_sd
 
 amount_qs <- quantile(df_r077$amount, c(0.25, 0.5, 0.75))
-amount_lower <- amount_qs[1] - (amount_qs[2] - amount_qs[1]) * 1.5
-amount_upper <- amount_qs[3] + (amount_qs[3] - amount_qs[2]) * 1.5
+amount_iqr <- amount_qs[3] - amount_qs[1]
+amount_lower <- amount_qs[1] - amount_iqr * 1.5
+amount_upper <- amount_qs[3] + amount_iqr * 1.5
+
+quantiles_bounds <- tibble(amount_lower=amount_lower, q1=amount_qs[1], q2=amount_qs[2], q3=amount_qs[3], amount_upper=amount_upper)
 
 df_r077_sd <- df_r077 %>%
     dplyr::filter((amount < amount_minus_3sd) | (amount > amount_plus_3sd))
 
 df_r078_quantile <- df_r077 %>%
     dplyr::filter((amount < amount_lower) | (amount > amount_upper))
+```
+
+公式解答集と答えが異なる。
+
+```{r r077_print_quantiles_bounds, eval=TRUE, echo=FALSE, message=FALSE, cache=TRUE}
+quantiles_bounds %>% kable() %>% kable_styling()
 ```
 
 平均と+/- 3標準偏差はこのようになる。
@@ -1958,7 +1986,7 @@ g <- g + geom_vline(xintercept=c(amount_minus_3sd, amount_mean, amount_plus_3sd)
 plot(g)
 ```
 
-25, 50, 75%分位点と、1.5IQRを用いた閾値はこのようになる。
+25, 50, 75%分位点と、1.5 IQRを用いた閾値はこのようになる。
 
 ```{r r078_print, eval=TRUE, echo=FALSE, message=FALSE, cache=TRUE}
 df_r078_quantile %>%
@@ -2138,6 +2166,14 @@ df_customer_1 %>%
     head(10) %>% kable() %>% kable_styling()
 ```
 
+customer_id でソートすると、公式解答集の答えとあう。
+
+```{r r085_sort, eval=TRUE, echo=FALSE, cache=TRUE}
+df_customer_1 %>%
+    dplyr::arrange(customer_id) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
 ### R-086
 
 **geosphere::distm** を使うと、緯度経度の組から、メートル単位の距離を求められる。行ごとに距離を求める処理は、 **purrrlyr::by_row** を使う。
@@ -2153,8 +2189,16 @@ df_customer_2 <- dplyr::inner_join(df_customer_1, df_store, by=c('application_st
     dplyr::select(c('customer_id', 'address_customer', 'address_store', 'dist'))
 ```
 
+customer_id でソートすると、公式解答集の答えとあう。距離は求め方が異なるので、だいたい等しいが異なる。
+
 ```{r r086_print, eval=TRUE, echo=FALSE, cache=TRUE}
 df_customer_2 %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+```{r r086_sort, eval=TRUE, echo=FALSE, cache=TRUE}
+df_customer_2 %>%
+    dplyr::arrange(customer_id) %>%
     head(10) %>% kable() %>% kable_styling()
 ```
 
@@ -2389,6 +2433,10 @@ dplyr::left_join(df_product, df_category,
                  by=c('category_major_cd', 'category_medium_cd', 'category_small_cd')) %>%
     head(10) %>% kable() %>% kable_styling()
 ```
+
+公式解答集は category_small_cd のみを用いているが、なぜだろう。
+
+stringr::str_starts
 
 ## ファイル入出力
 
