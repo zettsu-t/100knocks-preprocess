@@ -857,37 +857,19 @@ extract_head_char(df_receipt$customer_id)
 extract_head_char(df_receipt_z_excluded$customer_id)
 ```
 
-```{r r034, eval=FALSE, echo=TRUE, cache=TRUE}
-df_receipt_z_excluded %>%
-    dplyr::group_by(customer_id) %>%
-    dplyr::summarize(amount=sum(amount)) %>%
-    dplyr::ungroup() %>%
-    head(10)
-```
-
-```{r r034_print, eval=TRUE, echo=FALSE, cache=TRUE}
+```{r r034, eval=TRUE, echo=TRUE, cache=TRUE}
 df_receipt_mean <- df_receipt_z_excluded %>%
     dplyr::group_by(customer_id) %>%
     dplyr::summarize(amount=sum(amount)) %>%
     dplyr::ungroup()
-
-df_receipt_mean %>%
-    head(10) %>% kable() %>% kable_styling()
+mean(df_receipt_mean$amount)
 ```
 
 ### R-035
 
-R-034の結果を使おう。このままだと出力が正しいかどうか分からないので、平均を示す。
-
-```{r r035, eval=FALSE, echo=TRUE, cache=TRUE}
-mean(df_receipt_mean$amount)
-df_receipt_mean %>%
-    dplyr::filter(amount > mean(df_receipt_mean$amount)) %>%
-    head(10)
-```
+R-034の結果を使おう。
 
 ```{r r035_print, eval=TRUE, echo=FALSE, cache=TRUE}
-mean(df_receipt_mean$amount)
 df_receipt_mean %>%
     dplyr::filter(amount > mean(df_receipt_mean$amount)) %>%
     head(10) %>% kable() %>% kable_styling()
@@ -1111,7 +1093,7 @@ df_sales_summary %>%
     tidyr::pivot_longer(cols=setdiff(colnames(df_sales_summary), 'age'), names_to='gender', values_to='amount') %>%
     dplyr::mutate(gender=as.integer(gender)) %>%
     dplyr::mutate(gender=(gender > 1) * 90 + gender %% 10) %>%
-    head(10) %>% kable() %>% kable_styling()
+    kable() %>% kable_styling()
 ```
 
 ## データ変換
@@ -1541,13 +1523,13 @@ df_product %>%
 
 ### R-064
 
-**na.omit()** でNAを除いておく。
+利益率 = (売価-コスト)/コストとして計算する。 **na.omit()** でNAを除いておく。
 
 ```{r r064, eval=TRUE, echo=TRUE, cache=TRUE}
 (df_product %>%
     dplyr::select(c('unit_price', 'unit_cost')) %>%
     na.omit() %>%
-    dplyr::mutate(profit=(unit_price-unit_cost)/unit_cost))$profit %>%
+    dplyr::mutate(profit=(unit_price-unit_cost)/unit_price))$profit %>%
     mean()
 ```
 
@@ -1556,7 +1538,7 @@ df_product %>%
 ```{r r064_na, eval=TRUE, echo=TRUE, cache=TRUE}
 (df_product %>%
     dplyr::select(c('unit_price', 'unit_cost')) %>%
-    dplyr::mutate(profit=(unit_price-unit_cost)/unit_cost))$profit %>%
+    dplyr::mutate(profit=(unit_price-unit_cost)/unit_price))$profit %>%
     mean()
 ```
 
@@ -1565,17 +1547,19 @@ df_product %>%
 NAに対する計算結果はNAになるので、特に対処しない。
 
 ```{r r065, eval=FALSE, echo=TRUE, cache=TRUE}
+profit_scale <- 1.0 / 0.7
 df_r065 <- df_product %>%
-    dplyr::mutate(unit_price_floor=floor(unit_cost * 1.3),
-                  unit_price_round=round(unit_cost * 1.3),
-                  unit_price_ceiling=ceiling(unit_cost * 1.3))
+    dplyr::mutate(unit_price_floor=floor(unit_cost * profit_scale),
+                  unit_price_round=round(unit_cost * profit_scale),
+                  unit_price_ceiling=ceiling(unit_cost * profit_scale))
 ```
 
 ```{r r065_print, eval=TRUE, echo=FALSE, cache=TRUE}
+profit_scale <- 1.0 / 0.7
 df_r065 <- df_product %>%
-    dplyr::mutate(unit_price_floor=floor(unit_cost * 1.3),
-                  unit_price_round=round(unit_cost * 1.3),
-                  unit_price_ceiling=ceiling(unit_cost * 1.3))
+    dplyr::mutate(unit_price_floor=floor(unit_cost * profit_scale),
+                  unit_price_round=round(unit_cost * profit_scale),
+                  unit_price_ceiling=ceiling(unit_cost * profit_scale))
 df_r065 %>%
     dplyr::select(starts_with('unit')) %>%
     head(10) %>% kable() %>% kable_styling()
@@ -1749,8 +1733,8 @@ get_one_10th_samples <- function() {
 }
 
 get_one_10th_samples() %>% head(10) %>% kable() %>% kable_styling()
-df_r075a <- get_one_10th_samples() %>% head(10) %>% kable() %>% kable_styling()
-df_r075a
+df_r075a <- get_one_10th_samples()
+df_r075a %>% head(10) %>% kable() %>% kable_styling()
 ```
 
 ```{r r075a_confirm, eval=TRUE, echo=TRUE, cache=TRUE}
@@ -1911,6 +1895,7 @@ df_product2$unit_price[is.na(df_product2$unit_price)] <- round(mean(df_product2$
 df_product2$unit_cost[is.na(df_product2$unit_cost)] <- round(mean(df_product2$unit_cost, na.rm=TRUE))
 assertthat::assert_that(NROW(df_product) == NROW(na.omit(df_product2)))
 assertthat::assert_that(sum(is.na(df_product2)) == 0)
+assertthat::assert_that(NCOL(df_product2) == NCOL(df_product))
 ```
 
 ### R-082
