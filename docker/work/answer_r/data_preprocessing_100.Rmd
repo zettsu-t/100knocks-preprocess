@@ -22,18 +22,20 @@ urlcolor: blue
 
 注意: まだ作成中です。公式解答集はみていませんので、答えが間違っている可能性も、もっとよい書き方もあります。
 
+浮動小数を==で比較しているのは、本当は **dplyr::near** などを使うのが正しいです。
+
 ## 問題を解く環境をインストールする
 
 上記公式サイトの手順に従って、インストールする。
 
-このR Markdown文書では、入力データの docker/work/data/*.csv のみを使うので、この.Rmdファイルのあるディレクトリに work/data/.csv を置く。RStudioからこの.Rmdファイルをknitrすると、実行結果を埋め込んだHTMLなどに変換して読めるようになる。
+このR Markdown文書では、入力データの docker/work/data/*.csv のみを使うので、Dockerを起動する必要はない。RStudioからこの.Rmdファイルをknitrすると、実行結果を埋め込んだHTMLなどに変換して読めるようになる。
 
 ## 問題を解く準備をする
 
 ### この解答例で使用するRパッケージをロードする
 
 ```{r find_packages, include=FALSE, cache=TRUE}
-## 既にファイルあれば、以下のコマンドでパッケージを探せる
+## .Rファイルから、以下のコマンドでパッケージを探せる
 ## grep -Poh '([a-z]+)::' *.R *.Rmd | sort | uniq
 ```
 
@@ -141,13 +143,13 @@ df_receipt %>%
 
 ```{r r005, eval=FALSE, echo=TRUE, cache=TRUE}
 df_receipt %>%
-    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'quantity', 'amount')) %>%
+    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'amount')) %>%
     dplyr::filter((customer_id == 'CS018205000001') & (amount >= 1000))
 ```
 
 ```{r r005_print, eval=TRUE, echo=FALSE, cache=TRUE}
 df_receipt %>%
-    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'quantity', 'amount')) %>%
+    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'amount')) %>%
     dplyr::filter((customer_id == 'CS018205000001') & (amount >= 1000)) %>% kable() %>% kable_styling()
 ```
 
@@ -170,13 +172,13 @@ df_receipt %>%
 
 ```{r r007, eval=FALSE, echo=TRUE, cache=TRUE}
 df_receipt %>%
-    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'quantity', 'amount')) %>%
+    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'amount')) %>%
     dplyr::filter(customer_id == 'CS018205000001' & ((amount >= 1000) | (amount <= 2000)))
 ```
 
 ```{r r007_print, eval=TRUE, echo=FALSE, cache=TRUE}
 df_receipt %>%
-    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'quantity', 'amount')) %>%
+    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'amount')) %>%
     dplyr::filter(customer_id == 'CS018205000001' & ((amount >= 1000) | (amount <= 2000))) %>%
     kable() %>% kable_styling()
 ```
@@ -185,13 +187,13 @@ df_receipt %>%
 
 ```{r r008, eval=FALSE, echo=TRUE, cache=TRUE}
 df_receipt %>%
-    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'quantity', 'amount')) %>%
+    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'amount')) %>%
     dplyr::filter(customer_id == 'CS018205000001' & (product_cd != 'P071401019'))
 ```
 
 ```{r r008_print, eval=TRUE, echo=FALSE, cache=TRUE}
 df_receipt %>%
-    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'quantity', 'amount')) %>%
+    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'amount')) %>%
     dplyr::filter(customer_id == 'CS018205000001' & (product_cd != 'P071401019')) %>%
     kable() %>% kable_styling()
 ```
@@ -205,17 +207,18 @@ df_r009a <- df_store %>% dplyr::filter(!((prefecture_cd != 13) & (floor_area <= 
 ```
 
 ```{r r009a_print, eval=TRUE, echo=FALSE, cache=TRUE}
-df_r009a %>% head(10) %>% kable() %>% kable_styling()
+n_head_samles <- 10
+df_r009a %>% head(n_head_samles) %>% kable() %>% kable_styling()
 ```
 
-長いので先頭 ```r dim(df_r009a)[1]``` 件だけ出力した。次に、問題文と同じくorで書いてみる。
+長いので先頭 ```r n_head_samles``` 件だけ出力した。次に、問題文と同じくorで書いてみる。
 
 ```{r r009b, eval=TRUE, echo=TRUE, cache=TRUE}
 df_r009b <- df_store %>% dplyr::filter((prefecture_cd == 13) | (floor_area > 900))
 ```
 
 ```{r r009b_print, eval=TRUE, echo=FALSE, cache=TRUE}
-df_r009b %>% head(10) %>% kable() %>% kable_styling()
+df_r009b %>% head(n_head_samles) %>% kable() %>% kable_styling()
 ```
 
 両者の結果は一致するはずだが、目視で確認するのは辛いので、自動化しよう。 **dim()**はデータフレーム(というかここではtibble)の行数と列数を、二次元の整数ベクトルで返す。==は行数、列数同士で比較して一致すればTRUE、そうでなければFALSEを返す。行数同士、列数同士が一致すればc(TRUE, TRUE)が返るので、両方ともTRUEであることを **all()** で確認する。
@@ -344,7 +347,6 @@ df_customer %>%
 ```
 
 ## ソート
-```
 
 ### R-016
 
@@ -447,6 +449,7 @@ df_customer %>%
 df_receipt %>%
     dplyr::mutate(rank=dense_rank(desc(amount))) %>%
     dplyr::arrange(desc(amount)) %>%
+    dplyr::select(c('customer_id', 'amount', 'rank')) %>%
     head(10)
 ```
 
@@ -454,30 +457,51 @@ df_receipt %>%
 df_receipt %>%
     dplyr::mutate(rank=dense_rank(desc(amount))) %>%
     dplyr::arrange(desc(amount)) %>%
+    dplyr::select(c('customer_id', 'amount', 'rank')) %>%
     head(10) %>% kable() %>% kable_styling()
 ```
 
 ### R-020
 
-**dplyr::mutate** の中で **n()** を使うと、列数を取得することができる。
+**dplyr::mutate** の中で **row_number()** を使うと、列番号を取得することができる。
 
 ```{r r020a, eval=FALSE, echo=TRUE, cache=TRUE}
 df_receipt %>%
     dplyr::arrange(desc(amount)) %>%
-    dplyr::mutate(rank=seq(n())) %>%
+    dplyr::mutate(rank=row_number()) %>%
+    dplyr::select(c('customer_id', 'amount', 'rank')) %>%
     head(10)
 ```
 
 ```{r r020a_print, eval=TRUE, echo=FALSE, cache=TRUE}
 df_receipt %>%
     dplyr::arrange(desc(amount)) %>%
+    dplyr::mutate(rank=row_number()) %>%
+    dplyr::select(c('customer_id', 'amount', 'rank')) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+あるいは **dplyr::mutate** の中で **n()** を使うと、列数を取得することができる。
+
+```{r r020b, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt %>%
+    dplyr::arrange(desc(amount)) %>%
     dplyr::mutate(rank=seq(n())) %>%
+    dplyr::select(c('customer_id', 'amount', 'rank')) %>%
+    head(10)
+```
+
+```{r r020b_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt %>%
+    dplyr::arrange(desc(amount)) %>%
+    dplyr::mutate(rank=seq(n())) %>%
+    dplyr::select(c('customer_id', 'amount', 'rank')) %>%
     head(10) %>% kable() %>% kable_styling()
 ```
 
 seq(x)は1からxまで(1とxを含む)整数を返す。1:xと同じである。
 
-```{r r020b, eval=TRUE, echo=TRUE, cache=TRUE}
+```{r r020c, eval=TRUE, echo=TRUE, cache=TRUE}
 seq(5)
 1:5
 seq(-5)
@@ -873,7 +897,7 @@ df_receipt_mean %>%
 
 ### R-036
 
-内部結合とはinner joinのことですよね。そのものずばり **dplyr::inner_join** を使う。
+内部結合とはinner joinのことですよね。そのものずばり **dplyr::inner_join** を使おう。
 
 ```{r r036, eval=TRUE, echo=TRUE, cache=TRUE}
 dplyr::inner_join(df_receipt, df_store)$store_name %>%
@@ -898,48 +922,56 @@ dplyr::inner_join(df_product, df_category) %>%
 
 ### R-038
 
-```{r r038_customer_id, eval=TRUE, echo=FALSE, cache=TRUE}
-r038_customer_id_no_amounts <- (dplyr::left_join(df_customer, df_receipt_z_excluded, by='customer_id') %>%
-    dplyr::filter(is.na(amount)) %>%
-    head(1))$customer_id[1]
+**dplyr::left_join** を使えば、買い物実績が無い顧客についても結合できる。
+
+```{r r038, eval=FALSE, echo=TRUE, cache=TRUE}
+df_joined <- dplyr::left_join(df_customer, df_receipt_z_excluded, by='customer_id') %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup()
+df_joined$amount[is.na(df_joined$amount)] <- 0
 ```
 
-**dplyr::left_join** を使えば、買い物実績が無い顧客についても結合できる。customer_id: ```r r038_customer_id_no_amounts``` に相当する顧客はいるが、買い物の実績がないことが分かる。
+```{r r038_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_joined <- dplyr::left_join(df_customer, df_receipt_z_excluded, by='customer_id') %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup()
+df_joined$amount[is.na(df_joined$amount)] <- 0
+df_joined %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+```{r r038_customer_id, eval=TRUE, echo=FALSE, cache=TRUE}
+r038_customer_id_no_amounts <- (dplyr::left_join(df_customer, df_receipt_z_excluded, by='customer_id') %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(is.na(amount)))$customer_id[1]
+```
+
+customer_id: ```r r038_customer_id_no_amounts``` に相当する顧客はいるが、買い物の実績がないことが分かる。
 
 ```{r r038_join, eval=FALSE, echo=TRUE, cache=TRUE}
-df_joined <- dplyr::left_join(df_customer, df_receipt_z_excluded, by='customer_id')
-df_joined_nas <- df_joined %>%
-    dplyr::filter(is.na(amount))
-df_joined_nas %>%
-    head(3)
-customer_id_no_amounts <- df_joined_nas$customer_id[1]
-customer_id_no_amounts
 df_customer %>%
-    dplyr::filter(customer_id == customer_id_no_amounts)
+    dplyr::filter(customer_id == r038_customer_id_no_amounts)
 df_receipt_z_excluded %>%
-    dplyr::filter(customer_id == customer_id_no_amounts)
+    dplyr::filter(customer_id == r038_customer_id_no_amounts)
 ```
 
 ```{r r038_join_print, eval=TRUE, echo=FALSE, cache=TRUE}
-df_joined <- dplyr::left_join(df_customer, df_receipt_z_excluded, by='customer_id')
-
-df_joined_nas <- df_joined %>%
-    dplyr::filter(is.na(amount))
-df_joined_nas %>%
-    head(3) %>% kable() %>% kable_styling()
-customer_id_no_amounts <- df_joined_nas$customer_id[1]
 df_customer %>%
-    dplyr::filter(customer_id == customer_id_no_amounts) %>%
+    dplyr::filter(customer_id == r038_customer_id_no_amounts) %>%
     kable() %>% kable_styling()
 
 df_receipt_z_excluded %>%
-    dplyr::filter(customer_id == customer_id_no_amounts) %>%
+    dplyr::filter(customer_id == r038_customer_id_no_amounts) %>%
     kable() %>% kable_styling()
 ```
 
 ### R-039
 
-完全外部結合とはfull joinのことですよね。そのものずばり **dplyr::full_join** を使う。
+完全外部結合とはfull joinのことなので、そのものずばり **dplyr::full_join** を使う。
 
 ```{r r039, eval=FALSE, echo=TRUE, cache=TRUE}
 df_r039 <- df_receipt_z_excluded %>%
@@ -947,8 +979,7 @@ df_r039 <- df_receipt_z_excluded %>%
     dplyr::group_by(customer_id) %>%
     dplyr::summarize(n_day=NROW(unique(sales_ymd)), amount=sum(amount)) %>%
     dplyr::ungroup() %>%
-    dplyr::arrange(desc(n_day)) %>%
-    dplyr::arrange(desc(amount))
+    dplyr::arrange(n_day, amount)
 
 dplyr::full_join(df_r039 %>% dplyr::top_n(20, n_day),
                  df_r039 %>% dplyr::top_n(20, amount))
@@ -960,8 +991,7 @@ df_r039 <- df_receipt_z_excluded %>%
     dplyr::group_by(customer_id) %>%
     dplyr::summarize(n_day=NROW(unique(sales_ymd)), amount=sum(amount)) %>%
     dplyr::ungroup() %>%
-    dplyr::arrange(desc(n_day)) %>%
-    dplyr::arrange(desc(amount))
+    dplyr::arrange(n_day, amount)
 
 dplyr::full_join(df_r039 %>% dplyr::top_n(20, n_day),
                  df_r039 %>% dplyr::top_n(20, amount)) %>%
@@ -1043,6 +1073,7 @@ df_receipt %>%
 
 ```{r r043, eval=TRUE, echo=TRUE, cache=TRUE}
 df_sales_summary <- dplyr::inner_join(dplyr::inner_join(df_receipt, df_customer) %>%
+    dplyr::mutate(age=round(10*round(age %/% 10))) %>%
     dplyr::group_by(gender, age) %>%
     dplyr::summarize(amount=sum(amount)) %>%
     dplyr::ungroup(),
@@ -1056,12 +1087,12 @@ df_sales_summary <- dplyr::inner_join(dplyr::inner_join(df_receipt, df_customer)
 df_sales_summary %>% head(10) %>% kable() %>% kable_styling()
 ```
 
-12歳について確認する。
+10代について確認する。
 
 ```{r r043_confirm, eval=TRUE, echo=TRUE, cache=TRUE}
-NROW(dplyr::inner_join(df_receipt, df_customer) %>% dplyr::filter(age==12 & gender=='男性'))
-sum((dplyr::inner_join(df_receipt, df_customer) %>% dplyr::filter(age==12 & gender=='女性'))$amount)
-sum((dplyr::inner_join(df_receipt, df_customer) %>% dplyr::filter(age==12 & gender=='不明'))$amount)
+sum((dplyr::inner_join(df_receipt, df_customer) %>% dplyr::filter((age >= 10) & (age < 20) & gender=='男性'))$amount)
+sum((dplyr::inner_join(df_receipt, df_customer) %>% dplyr::filter((age >= 10) & (age < 20) & gender=='女性'))$amount)
+sum((dplyr::inner_join(df_receipt, df_customer) %>% dplyr::filter((age >= 10) & (age < 20) & gender=='不明'))$amount)
 ```
 
 ### R-044
@@ -1070,14 +1101,14 @@ sum((dplyr::inner_join(df_receipt, df_customer) %>% dplyr::filter(age==12 & gend
 
 ```{r r044, eval=FALSE, echo=TRUE, cache=TRUE}
 df_sales_summary %>%
-    tidyr::pivot_longer(cols=setdiff(colnames(df_sales_summary), 'age'), names_to='gender') %>%
+    tidyr::pivot_longer(cols=setdiff(colnames(df_sales_summary), 'age'), names_to='gender', values_to='amount') %>%
     dplyr::mutate(gender=as.integer(gender)) %>%
     dplyr::mutate(gender=(gender > 1) * 90 + gender %% 10)
 ```
 
 ```{r r044_print, eval=TRUE, echo=FALSE, cache=TRUE}
 df_sales_summary %>%
-    tidyr::pivot_longer(cols=setdiff(colnames(df_sales_summary), 'age'), names_to='gender') %>%
+    tidyr::pivot_longer(cols=setdiff(colnames(df_sales_summary), 'age'), names_to='gender', values_to='amount') %>%
     dplyr::mutate(gender=as.integer(gender)) %>%
     dplyr::mutate(gender=(gender > 1) * 90 + gender %% 10) %>%
     head(10) %>% kable() %>% kable_styling()
@@ -1140,8 +1171,6 @@ df_receipt %>%
 ```
 
 ### R-048
-
-実は8桁の数字を、そのまま文字列のように入力できる。
 
 ```{r r048, eval=FALSE, echo=TRUE, cache=TRUE}
 df_receipt %>%
@@ -1304,7 +1333,7 @@ df_r055 %>%
 quantile(df_r055$amount, c(0, 0.25, 0.5, 0.75, 1))
 ```
 
-dplyr::mutate(ntile(x, 4)) だと第3四分位の最大が3652、第4四分位の最小が3653になりますが、quantile(c(0.75))は3651.0です。データは小さい順に3650, 3652なので、1個データがずれています。
+dplyr::mutate(ntile(x, 4)) だと第3四分位の最大が3652、第4四分位の最小が3653になるが、quantile(c(0.75))は3651.0である。データは小さい順に3650, 3652なので、1個データがずれている。
 
 ```{r r055_confirm1, eval=TRUE, echo=FALSE, cache=TRUE}
 purrr::map(1:4, function(x) {
@@ -1720,11 +1749,12 @@ get_one_10th_samples <- function() {
 }
 
 get_one_10th_samples() %>% head(10) %>% kable() %>% kable_styling()
-get_one_10th_samples() %>% head(10) %>% kable() %>% kable_styling()
+df_r075a <- get_one_10th_samples() %>% head(10) %>% kable() %>% kable_styling()
+df_r075a
 ```
 
-```{r r075a_confirm, eval=TRUE, echo=FALSE, cache=TRUE}
-print(n)
+```{r r075a_confirm, eval=TRUE, echo=TRUE, cache=TRUE}
+print(NROW(df_customer))
 print(NROW(df_r075a))
 ```
 
@@ -1904,6 +1934,11 @@ df_product4 <- df_product %>%
 assertthat::assert_that(sum(is.na(df_product4)) == 0)
 ```
 
+```{r r083_confirm, eval=TRUE, echo=TRUE, cache=TRUE}
+assertthat::assert_that(!all(dplyr::near(df_product3$unit_price, df_product4$unit_price)))
+assertthat::assert_that(!all(dplyr::near(df_product3$unit_cost, df_product4$unit_cost)))
+```
+
 ## 除算エラー対応
 
 ### R-084
@@ -2076,7 +2111,7 @@ df_unique_r087 %>%
 
 ### R-088
 
-customer_id が重複していない顧客は唯一の customer_id が選ばれているはずなので、特に何もしなくてよいです。
+customer_id が重複していない顧客は唯一の customer_id が選ばれているはずなので、特に何もしなくてよい。
 
 ```{r r088, eval=FALSE, echo=TRUE, cache=TRUE}
 dplyr::inner_join(df_customer %>%
