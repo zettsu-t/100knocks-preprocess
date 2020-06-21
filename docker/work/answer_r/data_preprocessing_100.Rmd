@@ -2007,3 +2007,223 @@ df_customer_2 <- dplyr::inner_join(df_customer_1, df_store, by=c('application_st
 df_customer_2 %>%
     head(10) %>% kable() %>% kable_styling()
 ```
+
+## 名寄せ
+
+### R-087
+
+まず売上合計金額を求める。
+
+```{r r087_amount, eval=TRUE, echo=TRUE, cache=TRUE}
+df_r087 <- dplyr::left_join(df_customer, df_receipt %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup())
+df_r087$amount[is.na(df_r087$amount)] <- 0
+```
+
+IDが重複する顧客はいるのだろうか、確認しよう。
+
+```{r r087_duplicate, eval=TRUE, echo=TRUE, cache=TRUE}
+df_r087_duplicated <- df_customer %>%
+    dplyr::select(c('customer_id', 'customer_name', 'postal_cd')) %>%
+    dplyr::group_by(customer_name, postal_cd) %>%
+    dplyr::count() %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(n > 1)
+```
+
+```{r r087_duplicate_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_r087_duplicated %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+IDが重複する顧客はいるので、最も売上合計金額が多いIDを選ぼう。
+
+```{r r087_select, eval=TRUE, echo=TRUE, cache=TRUE}
+df_customer_u <- df_r087 %>%
+    dplyr::arrange(customer_id, desc(amount)) %>%
+    dplyr::distinct(customer_name, postal_cd, .keep_all=TRUE)
+```
+
+```{r r087_select_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_customer_u %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+名前と郵便番号が一致する顧客は最も売上合計金額が多いIDが選ばれ、名前が同じでも郵便番号が異なる顧客は区別されていることを確認しよう。
+
+```{r r087_confirm, eval=TRUE, echo=TRUE, cache=TRUE}
+duplicated_customers <- sort(unique(df_r087_duplicated$customer_name))[1:5]
+df_joined_r087 <- df_r087 %>%
+    dplyr::filter(customer_name %in% duplicated_customers) %>%
+    dplyr::arrange(customer_name, postal_cd) %>%
+    dplyr::select(c('customer_id', 'customer_name', 'postal_cd', 'amount'))
+
+df_unique_r087 <- df_customer_u %>%
+    dplyr::filter(customer_name %in% duplicated_customers) %>%
+    dplyr::arrange(customer_name, postal_cd) %>%
+    dplyr::select(c('customer_id', 'customer_name', 'postal_cd'))
+```
+
+```{r r087_confirm_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_joined_r087 %>%
+    head(10) %>% kable() %>% kable_styling()
+
+df_unique_r087 %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+### R-088
+
+customer_id が重複していない顧客は唯一の customer_id が選ばれているはずなので、特に何もしなくてよいです。
+
+```{r r088, eval=FALSE, echo=TRUE, cache=TRUE}
+dplyr::inner_join(df_customer %>%
+                  dplyr::select(-c('customer_id')),
+                  df_customer_u %>%
+                  dplyr::select('customer_id', 'customer_name', 'postal_cd'))
+```
+
+```{r r088_print, eval=TRUE, echo=FALSE, cache=TRUE}
+dplyr::inner_join(df_customer %>%
+                  dplyr::select(-c('customer_id')),
+                  df_customer_u %>%
+                  dplyr::select('customer_id', 'customer_name', 'postal_cd')) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+## データ分割
+
+### R-089
+
+データは先ほど名寄せした顧客として(問題文には明記されていないが)、ランダムに行を選ぼう。
+
+```{r r089_sample, eval=TRUE, echo=TRUE, cache=TRUE}
+df_sample_r089 <- df_customer_u %>%
+    dplyr::filter(amount > 0)
+n_samples <- NROW(df_sample_r089)
+train_set_r089 <- sort(sample(1:n_samples, n_samples * 0.8, replace=FALSE))
+test_set_r089 <- setdiff(1:n_samples, train_set_r089)
+assertthat::assert_that((NROW(train_set_r089) + NROW(test_set_r089)) == NROW(df_sample_r089))
+assertthat::assert_that(NROW(union(train_set_r089, test_set_r089)) == NROW(df_sample_r089))
+assertthat::assert_that(NROW(intersect(train_set_r089, test_set_r089)) == 0)
+assertthat::assert_that(dplyr::near(NROW(df_sample_r089) * 0.8, NROW(train_set_r089), tol=2))
+assertthat::assert_that(dplyr::near(NROW(df_sample_r089) * 0.2, NROW(test_set_r089), tol=2))
+```
+
+```{r r089, eval=FALSE, echo=FALSE, cache=TRUE}
+df_sample_r089[train_set_r089,]
+df_sample_r089[test_set_r089,]
+```
+
+```{r r089_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_sample_r089[train_set_r089,] %>%
+    head(10) %>% kable() %>% kable_styling()
+df_sample_r089[test_set_r089,] %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+### R-090
+
+月次で集計する。
+
+```{r r090, eval=TRUE, echo=TRUE, cache=FALSE}
+df_r090 <- df_receipt %>%
+    dplyr::mutate(sales_ymd=lubridate::parse_date_time(sales_ymd ,"%y%m%d")) %>%
+    dplyr::mutate(year=lubridate::year(sales_ymd), month=lubridate::month(sales_ymd)) %>%
+    dplyr::group_by(year, month) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::arrange(year, month) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(index=row_number())
+```
+
+学習用に12ヶ月、テスト用に6ヶ月とあるが、時系列データなら学習用の後にテスト用がくるはずである。そのようにサンプルを作ろう。
+
+```{r r090_print, eval=TRUE, echo=FALSE, cache=FALSE}
+df_r090 %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+```{r r090_sample, eval=TRUE, echo=TRUE, cache=FALSE}
+get_monthly_samples <- function() {
+    all_month_set <- sort(sample(df_r090$index, 18, replace=FALSE))
+    train_month_set <- all_month_set[1:12]
+    test_month_set <- setdiff(all_month_set, train_month_set)
+    df_train <- df_r090 %>%
+        dplyr::filter(index %in% train_month_set)
+    df_test <- df_r090 %>%
+        dplyr::filter(index %in% test_month_set)
+    df_train$type <- 'train'
+    df_test$type <- 'test'
+    dplyr::bind_rows(df_train, df_test)
+}
+```
+
+```{r r090_print_sample, eval=TRUE, echo=TRUE, cache=FALSE}
+get_monthly_samples() %>% kable() %>% kable_styling()
+get_monthly_samples() %>% kable() %>% kable_styling()
+get_monthly_samples() %>% kable() %>% kable_styling()
+```
+
+## 不均衡データ
+
+### R-091
+
+```{r r091_print, eval=TRUE, echo=TRUE, cache=TRUE}
+n_samples <- 100
+df_r091_non_zeros <- df_joined_r084 %>%
+    dplyr::filter(amount > 0) %>%
+    dplyr::sample_n(size=n_samples, replace=FALSE) %>%
+    dplyr::ungroup()
+
+df_r091_zeros <- df_joined_r084 %>%
+    dplyr::filter(amount == 0) %>%
+    dplyr::sample_n(size=n_samples, replace=FALSE) %>%
+    dplyr::ungroup()
+NROW(df_r091_non_zeros)
+NROW(df_r091_zeros)
+```
+
+## 正規化・非正規化
+
+推移的関数従属性を取り除く。
+
+### R-092
+
+gender_cdがあればgenderは一意に決まるので、別のテーブルに括り出す。
+
+```{r r092, eval=FALSE, echo=TRUE, cache=TRUE}
+df_customer %>%
+    dplyr::select(c('gender_cd', 'gender')) %>%
+    dplyr::distinct(gender_cd, gender, .keep_all=TRUE)
+
+df_customer %>%
+    dplyr::select(-c('gender'))
+```
+
+```{r r092_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_customer %>%
+    dplyr::select(c('gender_cd', 'gender')) %>%
+    dplyr::distinct(gender_cd, gender, .keep_all=TRUE) %>%
+    kable() %>% kable_styling()
+
+df_customer %>%
+    dplyr::select(-c('gender')) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+### R-093
+
+```{r r093, eval=FALSE, echo=TRUE, cache=TRUE}
+dplyr::left_join(df_product, df_category,
+                 by=c('category_major_cd', 'category_medium_cd', 'category_small_cd'))
+```
+
+```{r r093_print, eval=TRUE, echo=FALSE, cache=TRUE}
+dplyr::left_join(df_product, df_category,
+                 by=c('category_major_cd', 'category_medium_cd', 'category_small_cd')) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
