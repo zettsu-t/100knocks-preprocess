@@ -2216,8 +2216,8 @@ df_customer %>%
 
 ### R-093
 
-```{r r093, eval=FALSE, echo=TRUE, cache=TRUE}
-dplyr::left_join(df_product, df_category,
+```{r r093, eval=TRUE, echo=TRUE, cache=TRUE}
+df_product_r093 <- dplyr::left_join(df_product, df_category,
                  by=c('category_major_cd', 'category_medium_cd', 'category_small_cd'))
 ```
 
@@ -2227,3 +2227,110 @@ dplyr::left_join(df_product, df_category,
     head(10) %>% kable() %>% kable_styling()
 ```
 
+## ファイル入出力
+
+```{r file_io, eval=TRUE, echo=TRUE, message=FALSE, cache=TRUE}
+io_dirname <- 'output'
+dir.create(io_dirname)
+```
+
+出力先ディレクトリを ```r io_dirname``` とする。
+
+### R-094, R-097
+
+文字列符号化のデフォルトはUTF-8である。
+
+```{r r094, eval=TRUE, echo=TRUE, message=FALSE, cache=TRUE}
+df_saved <- df_product_r093
+filename <- file.path(io_dirname, 'r094.csv')
+readr::write_excel_csv(x=df_saved, path=filename, col_names=TRUE)
+assertthat::assert_that(file.exists(filename))
+file.info(filename)
+df_r094 <- readr::read_csv(file=filename, col_names=TRUE)
+
+assertthat::assert_that(NROW(df_saved) == NROW(df_r094))
+assertthat::assert_that(NCOL(df_saved) == NCOL(df_r094))
+assertthat::assert_that(all(colnames(df_saved) == colnames(df_r094)))
+assertthat::assert_that(all(df_saved[,1] == df_r094[,1]))
+
+invisible(readLines(filename, n=1, warn=FALSE))
+assertthat::assert_that(stringr::str_detect(readLines(filename, n=1, warn=FALSE), ','))
+assertthat::assert_that(!stringr::str_detect(readLines(filename, n=1, warn=FALSE), '\t'))
+```
+
+```{r r094_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_r094 %>% head(10) %>% kable() %>% kable_styling()
+```
+
+### R-095
+
+**readr::read_csv** でCP932つまりShift_JISはうまく扱えないようなので、 **read.csv ,write.csv** を使う。
+
+```{r r095, eval=TRUE, echo=TRUE, message=FALSE, cache=TRUE}
+filename <- file.path(io_dirname, 'r095.csv')
+write.csv(x=df_saved, file=filename, row.names=FALSE, fileEncoding='CP932')
+assertthat::assert_that(file.exists(filename))
+file.info(filename)
+df_r095 <- read.csv(file=filename, fileEncoding='CP932')
+assertthat::assert_that(NROW(df_saved) == NROW(df_r095))
+assertthat::assert_that(NCOL(df_saved) == NCOL(df_r095))
+assertthat::assert_that(all(colnames(df_saved) == colnames(df_r095)))
+
+invisible(readLines(filename, n=1, warn=FALSE))
+assertthat::assert_that(stringr::str_detect(readLines(filename, n=1, warn=FALSE), ','))
+assertthat::assert_that(!stringr::str_detect(readLines(filename, n=1, warn=FALSE), '\t'))
+```
+
+```{r r095_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_r095 %>% head(10) %>% kable() %>% kable_styling()
+```
+
+### R-096, R-098
+
+**col_names=FALSE**を使う。
+
+```{r r096, eval=TRUE, echo=TRUE, message=FALSE, cache=TRUE}
+filename <- file.path(io_dirname, 'r096.csv')
+readr::write_excel_csv(x=df_saved, path=filename, col_names=FALSE)
+assertthat::assert_that(file.exists(filename))
+file.info(filename)
+df_r096 <- readr::read_csv(file=filename, col_names=FALSE)
+
+assertthat::assert_that(NROW(df_saved) == NROW(df_r096))
+assertthat::assert_that(NCOL(df_saved) == NCOL(df_r096))
+assertthat::assert_that(all(colnames(df_saved) != colnames(df_r096)))
+assertthat::assert_that(all(df_saved[,1] == df_r096[,1]))
+
+invisible(readLines(filename, n=1, warn=FALSE))
+assertthat::assert_that(stringr::str_detect(readLines(filename, n=1, warn=FALSE), ','))
+assertthat::assert_that(!stringr::str_detect(readLines(filename, n=1, warn=FALSE), '\t'))
+```
+
+```{r r096_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_r096 %>% head(10) %>% kable() %>% kable_styling()
+```
+
+## R-099, R-100
+
+**readr::write_tsv**を使う。
+
+```{r r099, eval=TRUE, echo=TRUE, message=FALSE, cache=TRUE}
+filename <- file.path(io_dirname, 'r099.csv')
+readr::write_tsv(x=df_saved, path=filename, col_names=TRUE)
+assertthat::assert_that(file.exists(filename))
+file.info(filename)
+df_r099 <- readr::read_tsv(file=filename, col_names=TRUE)
+
+assertthat::assert_that(NROW(df_saved) == NROW(df_r099))
+assertthat::assert_that(NCOL(df_saved) == NCOL(df_r099))
+assertthat::assert_that(all(colnames(df_saved) == colnames(df_r099)))
+assertthat::assert_that(all(df_saved[,1] == df_r099[,1]))
+
+invisible(readLines(filename, n=1, warn=FALSE))
+assertthat::assert_that(!stringr::str_detect(readLines(filename, n=1, warn=FALSE), ','))
+assertthat::assert_that(stringr::str_detect(readLines(filename, n=1, warn=FALSE), '\t'))
+```
+
+```{r r099_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_r099 %>% head(10) %>% kable() %>% kable_styling()
+```
