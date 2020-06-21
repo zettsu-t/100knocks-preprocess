@@ -62,6 +62,8 @@ sessionInfo()
 
 私の環境では、geocode.csv を readr::read_csv で読むとエラーになるので、代わりにdata.table::freadを用いる。
 
+※ 公式解答集ではDBから読み込んでいるが、ここではCSVファイルを読み込む。
+
 ```{r load_data_sets, echo=TRUE, warning=FALSE, message=FALSE, cache=TRUE}
 df_receipt <- readr::read_csv('../data/receipt.csv')
 df_store <- readr::read_csv('../data/store.csv')
@@ -77,6 +79,8 @@ df_geocode <- as_tibble(data.table::fread('../data/geocode.csv'))
 
 **head()** を使うと、先頭から指定行だけ取り出すことができる。RStudioのコンソールから実行するとテキストが出力され、R Markdownでは **kable() %>% kable_styling()** を用いることできれいな表に整形できる。
 
+※ 公式解答集と同じ解き方
+
 ```{r r001, eval=FALSE, echo=TRUE, cache=TRUE}
 head(df_receipt, 10)
 ```
@@ -88,6 +92,8 @@ head(df_receipt, 10) %>% kable() %>% kable_styling()
 ### R-002
 
 **dplyr::select()** を使うと、指定した列(縦に長いほう)を、指定した順に取り出すことができる。元々の入力 (df_receipt) は変更しない。
+
+※ 公式解答集とは異なり、Tidyverseを用いた。私の解答はほぼすべてTidyverseを用いているが、公式解答集はTidyverseを用いていない例がある。
 
 ```{r r002, eval=FALSE, echo=TRUE, cache=TRUE}
 df_receipt %>%
@@ -104,6 +110,8 @@ df_receipt %>%
 ### R-003
 
 **dplyr::rename()** を使うと、列の名前を変更できる。
+
+※ 公式解答集とは異なり、R標準ではないパッケージ名は::で修飾している。その方が練習問題として読みやすいし、名前の衝突も避けられる。
 
 ```{r r003, eval=FALSE, echo=TRUE, cache=TRUE}
 df_receipt %>%
@@ -170,16 +178,33 @@ df_receipt %>%
 
 ### R-007
 
+(andとorを間違えていたのを修正)
+
 ```{r r007, eval=FALSE, echo=TRUE, cache=TRUE}
 df_receipt %>%
     dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'amount')) %>%
-    dplyr::filter(customer_id == 'CS018205000001' & ((amount >= 1000) | (amount <= 2000)))
+    dplyr::filter(customer_id == 'CS018205000001' & ((amount >= 1000) & (amount <= 2000)))
 ```
 
 ```{r r007_print, eval=TRUE, echo=FALSE, cache=TRUE}
 df_receipt %>%
     dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'amount')) %>%
-    dplyr::filter(customer_id == 'CS018205000001' & ((amount >= 1000) | (amount <= 2000))) %>%
+    dplyr::filter(customer_id == 'CS018205000001' & ((amount >= 1000) & (amount <= 2000))) %>%
+    kable() %>% kable_styling()
+```
+
+公式解答集はbetweenを使っている。確かにこうすれば、andとorの取り違えは避けられるので良い。ただし dplyr::betweenは閉区間(両端を含む)ことに注意する。
+
+```{r r007_official, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt %>%
+    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'amount')) %>%
+    dplyr::filter(customer_id == 'CS018205000001' & ((amount >= 1000) & (amount <= 2000)))
+```
+
+```{r r007_official_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt %>%
+    dplyr::select(c('sales_ymd', 'customer_id', 'product_cd', 'amount')) %>%
+    dplyr::filter(customer_id == 'CS018205000001' & between(amount, 1000, 2000)) %>%
     kable() %>% kable_styling()
 ```
 
@@ -202,8 +227,10 @@ df_receipt %>%
 
 この問いは、pandas.DataFrame.queryに相当する処理をRで書く、と趣旨のようだ。ともかく、notを使うとandをorに交換できる。
 
+(問題文のqueryにnotがあるのを見落としていたので修正)
+
 ```{r r009a, eval=TRUE, echo=TRUE, cache=TRUE}
-df_r009a <- df_store %>% dplyr::filter(!((prefecture_cd != 13) & (floor_area <= 900)))
+df_r009a <- df_store %>% dplyr::filter((prefecture_cd != 13) & (floor_area <= 900))
 ```
 
 ```{r r009a_print, eval=TRUE, echo=FALSE, cache=TRUE}
@@ -211,10 +238,10 @@ n_head_samles <- 10
 df_r009a %>% head(n_head_samles) %>% kable() %>% kable_styling()
 ```
 
-長いので先頭 ```r n_head_samles``` 件だけ出力した。次に、問題文と同じくorで書いてみる。
+長いので先頭 ```r n_head_samles``` 件だけ出力した。次に、問題文と同じくnotとorで書いてみる。
 
 ```{r r009b, eval=TRUE, echo=TRUE, cache=TRUE}
-df_r009b <- df_store %>% dplyr::filter((prefecture_cd == 13) | (floor_area > 900))
+df_r009b <- df_store %>% dplyr::filter(!((prefecture_cd == 13) | (floor_area > 900)))
 ```
 
 ```{r r009b_print, eval=TRUE, echo=FALSE, cache=TRUE}
@@ -240,6 +267,8 @@ assertthat::assert_that(all(sort(df_r009a$store_cd) == sort(df_r009b$store_cd)))
 ### R-010
 
 **dplyr::filter()** に文字列処理を書く。
+
+※ 公式解答集はgreplを使っている
 
 ```{r r010, eval=FALSE, echo=TRUE, cache=TRUE}
 df_store %>%
@@ -350,6 +379,8 @@ df_customer %>%
 
 ### R-016
 
+※ 公式解答集は正規表現の数値を0-9にしているが、私の解答では数値を \\d にしている。また問題に正確に従うなら、最後の数字は4桁と明示する方がよい。
+
 ```{r r016, eval=FALSE, echo=TRUE, cache=TRUE}
 df_store %>%
     dplyr::filter(stringr::str_detect(tel_no, '^\\d{3}\\-\\d{3}\\-\\d{4}$'))
@@ -456,6 +487,24 @@ df_receipt %>%
 ```{r r019_print, eval=TRUE, echo=FALSE, cache=TRUE}
 df_receipt %>%
     dplyr::mutate(rank=dense_rank(desc(amount))) %>%
+    dplyr::arrange(desc(amount)) %>%
+    dplyr::select(c('customer_id', 'amount', 'rank')) %>%
+    head(10) %>% kable() %>% kable_styling()
+```
+
+公式解答集は **min_rank** で順位をつけている。
+
+```{r r019_official, eval=FALSE, echo=TRUE, cache=TRUE}
+df_receipt %>%
+    dplyr::mutate(rank=min_rank(desc(amount))) %>%
+    dplyr::arrange(desc(amount)) %>%
+    dplyr::select(c('customer_id', 'amount', 'rank')) %>%
+    head(10)
+```
+
+```{r r019_official_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_receipt %>%
+    dplyr::mutate(rank=min_rank(desc(amount))) %>%
     dplyr::arrange(desc(amount)) %>%
     dplyr::select(c('customer_id', 'amount', 'rank')) %>%
     head(10) %>% kable() %>% kable_styling()
@@ -671,7 +720,7 @@ df_receipt %>%
     dplyr::filter(row_number() == 1 | row_number() == n()) %>%
     dplyr::filter(n() > 1) %>%
     dplyr::ungroup() %>%
-    head(10)
+    head(20)
 ```
 
 ```{r r026_print, eval=TRUE, echo=FALSE, cache=TRUE}
@@ -685,10 +734,12 @@ df_receipt_r026 <- df_receipt %>%
     dplyr::ungroup()
 
 df_receipt_r026 %>%
-    head(10) %>% kable() %>% kable_styling()
+    head(20) %>% kable() %>% kable_styling()
 ```
 
 customer_id: ```r df_receipt_r025$customer_id[1]``` が除かれて customer_id: ```r df_receipt_r026$customer_id[1]``` が残ったので、正しそうだ。
+
+公式解答集は、 **dplyr::summarise** maxとmin と求めている。その方がきれいなコードだ。
 
 ### R-027
 
@@ -816,6 +867,8 @@ quantile(df_receipt$amount, c(0.25, 0.5, 0.75)) %>% kable() %>% kable_styling()
 class(r032_quantiles)
 names(r032_quantiles)
 ```
+
+公式解答集ではそれぞれのパーセンタイル値を個別に求めているが、 **quantile** にはパーセンタイル値のベクトルを渡せる。
 
 ### R-033
 
@@ -1053,6 +1106,8 @@ df_receipt %>%
 
 **tidyr::pivot_wider** を使って、テーブルを横長にする。
 
+公式解答集では **tidyr::pivot_wider** の代わりに、 **tidyr::spread** を用いている。tidyrのドキュメントにはtidyr::pivot_widerを用いるように書いてある。
+
 ```{r r043, eval=TRUE, echo=TRUE, cache=TRUE}
 df_sales_summary <- dplyr::inner_join(dplyr::inner_join(df_receipt, df_customer) %>%
     dplyr::mutate(age=round(10*round(age %/% 10))) %>%
@@ -1066,7 +1121,7 @@ df_sales_summary <- dplyr::inner_join(dplyr::inner_join(df_receipt, df_customer)
 ```
 
 ```{r r043_print, eval=TRUE, echo=FALSE, cache=TRUE}
-df_sales_summary %>% head(10) %>% kable() %>% kable_styling()
+df_sales_summary %>% kable() %>% kable_styling()
 ```
 
 10代について確認する。
@@ -1077,22 +1132,42 @@ sum((dplyr::inner_join(df_receipt, df_customer) %>% dplyr::filter((age >= 10) & 
 sum((dplyr::inner_join(df_receipt, df_customer) %>% dplyr::filter((age >= 10) & (age < 20) & gender=='不明'))$amount)
 ```
 
+公式解答集では **values_fill=0** を用いて、90代のNAを0で埋めている。この解答もそれにならう。
+
+```{r r043_fill, eval=TRUE, echo=TRUE, cache=TRUE}
+df_sales_summary <- dplyr::inner_join(dplyr::inner_join(df_receipt, df_customer) %>%
+    dplyr::mutate(age=round(10*round(age %/% 10))) %>%
+    dplyr::group_by(gender, age) %>%
+    dplyr::summarize(amount=sum(amount)) %>%
+    dplyr::ungroup(),
+    tibble(gender=c('男性', '女性', '不明'), gender_id=c(0, 1, 9))) %>%
+    dplyr::select(-gender) %>%
+    dplyr::rename(gender=gender_id) %>%
+    tidyr::pivot_wider(id_cols=age, names_from=gender, values_from=amount, values_fill=list(amount=0))
+```
+
+```{r r043_fill_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_sales_summary %>% kable() %>% kable_styling()
+```
+
 ### R-044
 
-**tidyr::pivot_wider** を使って、テーブルを横長にする。
+**tidyr::pivot_wider** を使って、テーブルを横長にする。問題文の00, 01, 99は文字列である。
+
+公式解答集では **case_when** を用いているが、私はこういうときに **inner_join** を使う。そうすると変換前と変換後の表を実行時に与えることができる。
 
 ```{r r044, eval=FALSE, echo=TRUE, cache=TRUE}
 df_sales_summary %>%
     tidyr::pivot_longer(cols=setdiff(colnames(df_sales_summary), 'age'), names_to='gender', values_to='amount') %>%
     dplyr::mutate(gender=as.integer(gender)) %>%
-    dplyr::mutate(gender=(gender > 1) * 90 + gender %% 10)
+    dplyr::mutate(gender=sprintf('%02d', (gender > 1) * 90 + gender %% 10))
 ```
 
 ```{r r044_print, eval=TRUE, echo=FALSE, cache=TRUE}
 df_sales_summary %>%
     tidyr::pivot_longer(cols=setdiff(colnames(df_sales_summary), 'age'), names_to='gender', values_to='amount') %>%
     dplyr::mutate(gender=as.integer(gender)) %>%
-    dplyr::mutate(gender=(gender > 1) * 90 + gender %% 10) %>%
+    dplyr::mutate(gender=sprintf('%02d', (gender > 1) * 90 + gender %% 10)) %>%
     kable() %>% kable_styling()
 ```
 
@@ -1101,6 +1176,8 @@ df_sales_summary %>%
 ### R-045
 
 **format** で文字列に変換する。
+
+公式解答集では **format** ではなく **strftime** を用いている。
 
 ```{r r045, eval=FALSE, echo=TRUE, cache=TRUE}
 df_customer %>%
@@ -1119,6 +1196,8 @@ df_customer %>%
 ### R-046
 
 ここではlubridateパッケージを使う。
+
+公式解答集では **format** ではなく **strfpime** を用いている。
 
 ```{r r046, eval=FALSE, echo=TRUE, cache=TRUE}
 df_customer %>%
@@ -1174,6 +1253,8 @@ df_receipt %>%
 
 **lubridate::year** で年を取り出す。同様に **lubridate::month** で月を、 **lubridate::day** で日を取り出す。
 
+公式解答集では文字列を作って **substring** で分けているが、lubridateを使うと直接年月日を取り出すことができる。
+
 ```{r r049, eval=FALSE, echo=TRUE, cache=TRUE}
 df_r049 <- df_receipt %>%
     dplyr::mutate(sales_date=lubridate::as_datetime(sales_epoch, origin = lubridate::origin)) %>%
@@ -1218,6 +1299,8 @@ df_r049 %>%
 
 論理値を整数に変換すると、FALSEは0に、TRUEは1になる。
 
+処理は公式解答集と同様だが、私の解答は上記を利用している。それと列名は bit_amountより、highのように意味を表す物が読みやすい。
+
 ```{r r052, eval=FALSE, echo=TRUE, cache=TRUE}
 df_receipt_z_excluded %>%
     dplyr::group_by(customer_id) %>%
@@ -1239,6 +1322,8 @@ df_receipt_z_excluded %>%
 ### R-053
 
 ** tidyr::separate** を使って文字列を分離する。
+
+処理は公式解答集と同様だが、私の解答はR-052と同様に論理値から整数への変換を利用している。それと郵便番号の上三桁は中間変数として持って置き、不要なら後で消す方がパイプライン処理としてすんなり書ける。
 
 ```{r r053, eval=FALSE, echo=TRUE, cache=TRUE}
 dplyr::inner_join(df_customer %>%
@@ -1267,6 +1352,8 @@ dplyr::inner_join(df_customer %>%
 
 正規表現に一致する文字列だけ取り出すことで、都道府県を取り出す。正規表現は実行時に作ることができる。
 
+R-044でも書いた通り、公式解答集では **case_when** を用いているが、私はこういうときに **inner_join** を使う。そうすると変換前と変換後の表を実行時に与えることができる。47都道府県に拡張する手間を考えるとそうしたい。
+
 ```{r r054, eval=FALSE, echo=TRUE, cache=TRUE}
 prefectures <- c('埼玉県', '千葉県', '東京都', '神奈川県')
 prefecture_pattern <- paste0('^(',  paste(prefectures, sep='', collapse='|'), ')')
@@ -1291,6 +1378,8 @@ dplyr::inner_join(df_customer %>%
 ### R-055
 
 **ntile** を使って25%ごとに区切る。
+
+公式解答集では **case_when** を用いているが、パーセンタイル分位が均等なら **ntile** が使える。
 
 ```{r r055, eval=FALSE, echo=TRUE, cache=TRUE}
 df_r055 <- df_receipt %>%
@@ -1336,6 +1425,8 @@ sorted_amount[max(which(sorted_amount <= quantile(df_r055$amount, 0.75))):
 
 **dplyr::mutate** には関数を渡すことができる。
 
+公式解答集では年齢集団をera(時代)としているが、年齢層はage groupであるし、20代は20sと呼ぶし、60歳及びそれ以上はage 60+と書く。英語は正確に使う方が読みやすい。
+
 ```{r r056, eval=FALSE, echo=TRUE, cache=TRUE}
 get_age_group <- function(xs) {
     purrr::map_chr(xs, function(x) {
@@ -1373,7 +1464,7 @@ df_age %>%
 
 ### R-057
 
-値をつなげてカテゴリにするのが簡単である。
+値をつなげてカテゴリにするのが簡単である。値は何でもよいのだから、必要なら後でfactorにすればよい。
 
 ```{r r057, eval=FALSE, echo=TRUE, cache=TRUE}
 df_customer %>%
@@ -1395,6 +1486,8 @@ df_customer %>%
 ### R-058
 
 ここでは **mlr** パッケージを使う。
+
+公式解答集では **dummyVars** を用いている。データフレーム全体をダミー化するときは私も使うが、一部の列だけダミー化する方法が分からなかった。
 
 ```{r r058, eval=FALSE, echo=TRUE, cache=TRUE}
 df_customer %>%
@@ -1420,6 +1513,8 @@ df_customer %>%
 ### R-059
 
 **scale** で、平均0、標準偏差1にする。
+
+公式解答集では **scale** の引数を明示しているが、省略時と同じである。
 
 ```{r r059, eval=FALSE, echo=TRUE, cache=TRUE}
 df_receipt_z_excluded %>%
@@ -1447,6 +1542,8 @@ sd(df_r059$amount_standardized)
 ### R-060
 
 **scale** で、平均0、標準偏差1にする。
+
+公式解答集では maxとminから計算している。
 
 ```{r r060, eval=FALSE, echo=TRUE, cache=TRUE}
 df_receipt_z_excluded %>%
@@ -1525,6 +1622,8 @@ df_product %>%
 
 利益率 = (売価-コスト)/コストとして計算する。 **na.omit()** でNAを除いておく。
 
+公式解答集では、 **mean(na.rm=TRUE)** を用いている。
+
 ```{r r064, eval=TRUE, echo=TRUE, cache=TRUE}
 (df_product %>%
     dplyr::select(c('unit_price', 'unit_cost')) %>%
@@ -1570,6 +1669,27 @@ df_r065 %>%
     dplyr::filter(is.na(unit_cost)) %>%
     dplyr::select(starts_with('unit')) %>%
     head(3) %>% kable() %>% kable_styling()
+```
+
+丸目誤差を除いて、利益率が3割近いことを確認する。
+
+```{r r065_chart, eval=TRUE, echo=TRUE, cache=TRUE}
+df_profit_r065 <- df_r065 %>%
+    dplyr::mutate(profit_ratio_floor=(unit_price_floor - unit_cost) / unit_price_floor,
+                  profit_ratio_round=(unit_price_round - unit_cost) / unit_price_round,
+                  profit_ratio_ceiling=(unit_price_ceiling - unit_cost) / unit_price_ceiling) %>%
+    dplyr::select(starts_with('profit'))
+range(df_profit_r065, na.rm=TRUE)
+
+df_profit_r065_drawn <- df_profit_r065 %>%
+    na.omit() %>%
+    tidyr::pivot_longer(cols=colnames(df_profit_r065), names_to='rounding', values_to='profit') %>%
+    dplyr::mutate(rounding=stringr::str_replace(rounding, '.*_(.*)', '\\1'))
+
+g <- ggplot(df_profit_r065_drawn, aes(x=profit, color=rounding, fill=rounding))
+g <- g + geom_histogram(position='dodge', color='black')
+g <- g + scale_fill_manual(values=c('royalblue3', 'orange', 'gray50'))
+plot(g)
 ```
 
 ### R-068
@@ -1632,6 +1752,8 @@ assertthat::assert_that(all(df_r069$amount_ratio > 0))
 
 準備として、日付型に変更して、customer_id でinner join する。
 
+公式解答集ではlubridateを使っていないが、lubridateを使う方が簡単である。
+
 ```{r r070_setup, eval=TRUE, echo=TRUE, cache=TRUE}
 df_r070_date <- dplyr::inner_join(df_receipt %>%
     dplyr::mutate(sales_ymd=lubridate::parse_date_time(sales_ymd ,"%y%m%d")),
@@ -1684,6 +1806,8 @@ df_r070 %>%
 ### R-074
 
 難易度が三ッ星だが、 **lubridate::wday** を使うと、ある曜日を1としたときの経過日数を数えられる。月曜日は week_start=1 にする。
+
+公式解答集ではlubridateを使っていないが、lubridateを使う方が簡単である。
 
 ```{r r074, eval=FALSE, echo=TRUE, cache=TRUE}
 df_receipt %>%
@@ -1745,6 +1869,8 @@ print(NROW(df_r075a))
 ### R-076
 
 **dplyr::sample_n** を使ってみる。実は先ほどのR-075でも使えた。
+
+公式解答集では **sample_frac()** を使っていて、そちらの方が簡潔に書ける。
 
 ```{r r076, eval=FALSE, echo=TRUE, cache=TRUE}
 df_r076 <- df_customer %>%
@@ -1889,6 +2015,8 @@ assertthat::assert_that(max(df_r079$num_na) == (NROW(df_product) - NROW(na.omit(
 
 これまでも用いてきた **na.omit** で、欠測のある行=標本を除く。真理値のsumを取ると、TRUEの数になる。
 
+公式解答集では **tidyr::replace_na** を使っており、その方がきれいに書ける。
+
 ```{r r081_print, eval=TRUE, echo=TRUE, cache=TRUE}
 df_product2 <- df_product
 df_product2$unit_price[is.na(df_product2$unit_price)] <- round(mean(df_product2$unit_price, na.rm=TRUE))
@@ -1899,6 +2027,8 @@ assertthat::assert_that(NCOL(df_product2) == NCOL(df_product))
 ```
 
 ### R-082
+
+公式解答集では **tidyr::replace_na** を使っており、その方がきれいに書ける。
 
 ```{r r082_print, eval=TRUE, echo=TRUE, cache=TRUE}
 df_product3 <- df_product
@@ -2071,6 +2201,13 @@ df_customer_u %>%
     head(10) %>% kable() %>% kable_styling()
 ```
 
+重複した行数と減った行数は等しい。
+
+```{r r087_removed_print, eval=TRUE, echo=TRUE, cache=TRUE}
+NROW(df_r087_duplicated)
+NROW(df_customer) - NROW(df_customer_u)
+```
+
 名前と郵便番号が一致する顧客は最も売上合計金額が多いIDが選ばれ、名前が同じでも郵便番号が異なる顧客は区別されていることを確認しよう。
 
 ```{r r087_confirm, eval=TRUE, echo=TRUE, cache=TRUE}
@@ -2098,19 +2235,21 @@ df_unique_r087 %>%
 
 customer_id が重複していない顧客は唯一の customer_id が選ばれているはずなので、特に何もしなくてよい。
 
-```{r r088, eval=FALSE, echo=TRUE, cache=TRUE}
-dplyr::inner_join(df_customer %>%
+```{r r088, eval=TRUE, echo=TRUE, cache=TRUE}
+df_customer_n <-dplyr::inner_join(df_customer %>%
                   dplyr::select(-c('customer_id')),
                   df_customer_u %>%
                   dplyr::select('customer_id', 'customer_name', 'postal_cd'))
 ```
 
 ```{r r088_print, eval=TRUE, echo=FALSE, cache=TRUE}
-dplyr::inner_join(df_customer %>%
-                  dplyr::select(-c('customer_id')),
-                  df_customer_u %>%
-                  dplyr::select('customer_id', 'customer_name', 'postal_cd')) %>%
+df_customer_n %>%
     head(10) %>% kable() %>% kable_styling()
+```
+
+```{r r088_removed_print, eval=TRUE, echo=TRUE, cache=TRUE}
+NROW(df_r087_duplicated)
+NROW(df_customer) - NROW(unique(df_customer_n$customer_id))
 ```
 
 ## データ分割
@@ -2118,6 +2257,8 @@ dplyr::inner_join(df_customer %>%
 ### R-089
 
 データは先ほど名寄せした顧客として(問題文には明記されていないが)、ランダムに行を選ぼう。
+
+公式解答集では、df_customer と df_receipt を inner_join したものに、 **rsample::initial_split** を用いている。
 
 ```{r r089_sample, eval=TRUE, echo=TRUE, cache=TRUE}
 df_sample_r089 <- df_customer_u %>%
@@ -2147,6 +2288,8 @@ df_sample_r089[test_set_r089,] %>%
 ### R-090
 
 月次で集計する。
+
+公式解答集では、 **caret::createDataPartition** を用いている。
 
 ```{r r090, eval=TRUE, echo=TRUE, cache=FALSE}
 df_r090 <- df_receipt %>%
@@ -2259,6 +2402,8 @@ dir.create(io_dirname)
 ### R-094, R-097
 
 文字列符号化のデフォルトはUTF-8である。
+
+※ 公式解答集とは異なり、readr パッケージを用いる。
 
 ```{r r094, eval=TRUE, echo=TRUE, message=FALSE, cache=TRUE}
 df_saved <- df_product_r093
