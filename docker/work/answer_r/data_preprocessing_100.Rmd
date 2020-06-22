@@ -20,7 +20,7 @@ urlcolor: blue
 
 [データサイエンス100本ノック（構造化データ加工編）](https://github.com/The-Japan-DataScientist-Society/100knocks-preprocess)の、R版についての私の解答です。正解例は公式をみてください。
 
-公式解答集と比較し、既知の誤りは訂正してあります。R-078, R-093については検討中です。R-089, 090, 091 はあっていると思いますが、乱数なので再現できないのと、公式解答集が私の知らないパッケージを用いているのでこれから調べます。
+公式解答集と比較し、既知の誤りは訂正してあります。R-089, 090, 091 はあっていると思いますが、乱数なので再現できないのと、公式解答集が私の知らないパッケージを用いているのでこれから調べます。
 
 浮動小数を==で比較しているのは、本当は **dplyr::near** などを使うのが正しいです。
 
@@ -47,14 +47,18 @@ library(purrr)
 library(readr)
 library(stringr)
 library(tidyr)
-library(data.table)
-library(lubridate)
+
 library(assertthat)
+library(caret)
+library(data.table)
 library(functional)
+library(geosphere)
+library(lubridate)
 library(mlr)
 library(purrrlyr)
 library(scales)
-library(geosphere)
+library(unbalanced)
+
 library(kableExtra)
 sessionInfo()
 ```
@@ -430,14 +434,14 @@ df_customer %>%
 月や日が一桁のときに数字が一桁で表記されているときは、文字列として比較すると上手くいかない。1月2日より前に1月10日がきてしまう。
 
 ```{r r017d, eval=TRUE, echo=TRUE, cache=TRUE}
-date_str_set <- c("2019-1-2", "2019-1-10", "2019-10-2")
+date_str_set <- c('2019-1-2', '2019-1-10', '2019-10-2')
 sort(date_str_set)
 ```
 
 **lubridate::parse_date_time** で文字列を日付に変換しよう。1月2日より後に1月10日がくるようになった。
 
 ```{r r017e, eval=TRUE, echo=TRUE, cache=TRUE}
-date_set <- lubridate::parse_date_time(date_str_set ,"%y-%m-%d")
+date_set <- lubridate::parse_date_time(date_str_set ,'%y-%m-%d')
 sort(date_set)
 ```
 
@@ -445,14 +449,14 @@ sort(date_set)
 
 ```{r r017f, eval=TRUE, echo=TRUE, cache=TRUE}
 df_r017b <- df_customer %>%
-    dplyr::mutate(birth_day=lubridate::parse_date_time(birth_day ,"%y-%m-%d")) %>%
+    dplyr::mutate(birth_day=lubridate::parse_date_time(birth_day ,'%y-%m-%d')) %>%
     dplyr::arrange(birth_day) %>%
     head(10)
 ```
 
 ```{r r017f_print, eval=TRUE, echo=FALSE, cache=TRUE}
 df_customer %>%
-    dplyr::mutate(birth_day=lubridate::parse_date_time(birth_day ,"%y-%m-%d")) %>%
+    dplyr::mutate(birth_day=lubridate::parse_date_time(birth_day ,'%y-%m-%d')) %>%
     dplyr::arrange(birth_day) %>%
     head(10) %>% kable() %>% kable_styling()
 ```
@@ -913,7 +917,7 @@ df_receipt %>%
 
 ### R-034
 
-顧客IDが"Z"から始まるのものは非会員を表すため除外したデータは、今後の問題で頻繁に出るのでここで作る。 df_receipt_z_excluded という変数に格納する。
+顧客IDが'Z'から始まるのものは非会員を表すため除外したデータは、今後の問題で頻繁に出るのでここで作る。 df_receipt_z_excluded という変数に格納する。
 
 ```{r r034_filter, eval=TRUE, echo=TRUE, cache=TRUE}
 df_receipt_z_excluded <- df_receipt %>%
@@ -924,7 +928,7 @@ df_receipt_z_excluded <- df_receipt %>%
 
 ```{r r034_confirm, eval=TRUE, echo=TRUE, cache=TRUE}
 extract_head_char <- function(xs) {
-    purrr::map_chr(xs, ~ stringr::str_match(.x, "^.")) %>% unique()
+    purrr::map_chr(xs, ~ stringr::str_match(.x, '^.')) %>% unique()
 }
 
 extract_head_char(df_receipt$customer_id)
@@ -1034,12 +1038,12 @@ df_receipt_z_excluded %>%
 ```{r r038_check, eval=TRUE, echo=TRUE, cache=TRUE}
 ## 公式解答集
 df_sum <- df_receipt %>%
-    filter(!grepl("^Z", customer_id)) %>%
+    filter(!grepl('^Z', customer_id)) %>%
     group_by(customer_id) %>%
     summarise(sum_amount=sum(amount))
 
 df_target <- df_customer %>%
-    filter(!grepl("^Z", customer_id) & gender_cd == '1')
+    filter(!grepl('^Z', customer_id) & gender_cd == '1')
 
 df_r038_expected <- left_join(df_target['customer_id'], df_sum, by = 'customer_id') %>%
     replace_na(list(sum_amount=0)) %>%
@@ -1085,20 +1089,20 @@ df_r039_actual %>%
 ```{r r039_check, eval=TRUE, echo=TRUE, cache=TRUE}
 ## 公式解答集
 df_sum <- df_receipt %>%
-    filter(!grepl("^Z", customer_id)) %>%
+    filter(!grepl('^Z', customer_id)) %>%
     group_by(customer_id) %>%
     summarise(sum_amount=sum(amount)) %>%
     arrange(desc(sum_amount)) %>%
     slice(1:20)
 
 df_cnt <- df_receipt %>%
-    filter(!grepl("^Z", customer_id)) %>%
+    filter(!grepl('^Z', customer_id)) %>%
     group_by(customer_id) %>%
     summarise(come_days=n_distinct(sales_ymd)) %>%
     arrange(desc(come_days), customer_id) %>%
     slice(1:20)
 
-df_r039_expected <- full_join(df_sum, df_cnt, by = "customer_id") %>%
+df_r039_expected <- full_join(df_sum, df_cnt, by = 'customer_id') %>%
     dplyr::arrange(customer_id) %>%
     dplyr::rename(amount=sum_amount, n_day=come_days)
 
@@ -1281,14 +1285,14 @@ df_sales_summary %>%
 
 ```{r r045, eval=FALSE, echo=TRUE, cache=TRUE}
 df_customer %>%
-    dplyr::mutate(birth_day=format(as.Date(birth_day), format="%Y%m%d")) %>%
+    dplyr::mutate(birth_day=format(as.Date(birth_day), format='%Y%m%d')) %>%
     dplyr::select(c('customer_id', 'birth_day')) %>%
     head(10)
 ```
 
 ```{r r045_print, eval=TRUE, echo=FALSE, cache=TRUE}
 df_customer %>%
-    dplyr::mutate(birth_day=format(as.Date(birth_day), format="%Y%m%d")) %>%
+    dplyr::mutate(birth_day=format(as.Date(birth_day), format='%Y%m%d')) %>%
     dplyr::select(c('customer_id', 'birth_day')) %>%
     head(10) %>% kable() %>% kable_styling()
 ```
@@ -1301,14 +1305,14 @@ df_customer %>%
 
 ```{r r046, eval=FALSE, echo=TRUE, cache=TRUE}
 df_customer %>%
-    dplyr::mutate(application_date=lubridate::parse_date_time(application_date ,"%y%m%d")) %>%
+    dplyr::mutate(application_date=lubridate::parse_date_time(application_date ,'%y%m%d')) %>%
     dplyr::select(c('customer_id', 'application_date')) %>%
     head(10)
 ```
 
 ```{r r046_print, eval=TRUE, echo=FALSE, cache=TRUE}
 df_customer %>%
-    dplyr::mutate(application_date=lubridate::parse_date_time(application_date ,"%y%m%d")) %>%
+    dplyr::mutate(application_date=lubridate::parse_date_time(application_date ,'%y%m%d')) %>%
     dplyr::select(c('customer_id', 'application_date')) %>%
     head(10) %>% kable() %>% kable_styling()
 ```
@@ -1319,14 +1323,14 @@ df_customer %>%
 
 ```{r r047, eval=FALSE, echo=TRUE, cache=TRUE}
 df_receipt %>%
-    dplyr::mutate(sales_ymd=lubridate::parse_date_time(sales_ymd ,"%y%m%d")) %>%
+    dplyr::mutate(sales_ymd=lubridate::parse_date_time(sales_ymd ,'%y%m%d')) %>%
     dplyr::select(c('sales_ymd', 'receipt_no', 'receipt_sub_no')) %>%
     head(10)
 ```
 
 ```{r r047_print, eval=TRUE, echo=FALSE, cache=TRUE}
 df_receipt %>%
-    dplyr::mutate(sales_ymd=lubridate::parse_date_time(sales_ymd ,"%y%m%d")) %>%
+    dplyr::mutate(sales_ymd=lubridate::parse_date_time(sales_ymd ,'%y%m%d')) %>%
     dplyr::select(c('sales_ymd', 'receipt_no', 'receipt_sub_no')) %>%
     head(10) %>% kable() %>% kable_styling()
 ```
@@ -1722,7 +1726,7 @@ df_product %>%
 
 ### R-064
 
-利益率 = (売価-コスト)/コストとして計算する。 **na.omit()** でNAを除いておく。
+利益率 = (売価-コスト)/売価として計算する。 **na.omit()** でNAを除いておく。
 
 公式解答集では、 **mean(na.rm=TRUE)** を用いている。
 
@@ -1791,6 +1795,7 @@ df_profit_r065_drawn <- df_profit_r065 %>%
 g <- ggplot(df_profit_r065_drawn, aes(x=profit, color=rounding, fill=rounding))
 g <- g + geom_histogram(position='dodge', color='black')
 g <- g + scale_fill_manual(values=c('royalblue3', 'orange', 'gray50'))
+g <- g + theme_bw()
 plot(g)
 ```
 
@@ -1858,9 +1863,9 @@ assertthat::assert_that(all(df_r069$amount_ratio > 0))
 
 ```{r r070_setup, eval=TRUE, echo=TRUE, cache=TRUE}
 df_r070_date <- dplyr::inner_join(df_receipt %>%
-    dplyr::mutate(sales_ymd=lubridate::parse_date_time(sales_ymd ,"%y%m%d")),
+    dplyr::mutate(sales_ymd=lubridate::parse_date_time(sales_ymd ,'%y%m%d')),
     df_customer %>%
-    dplyr::mutate(application_date=lubridate::parse_date_time(application_date ,"%y%m%d"), units='days')) %>%
+    dplyr::mutate(application_date=lubridate::parse_date_time(application_date ,'%y%m%d'), units='days')) %>%
     dplyr::mutate(elapsed=lubridate::interval(application_date, sales_ymd))
 ```
 
@@ -1913,7 +1918,7 @@ df_r070 %>%
 
 ```{r r074, eval=FALSE, echo=TRUE, cache=TRUE}
 df_receipt %>%
-    dplyr::mutate(sales_ymd=lubridate::parse_date_time(sales_ymd ,"%y%m%d")) %>%
+    dplyr::mutate(sales_ymd=lubridate::parse_date_time(sales_ymd ,'%y%m%d')) %>%
     dplyr::mutate(wday=lubridate::wday(sales_ymd, week_start=1) - 1) %>%
     dplyr::mutate(week_start=sales_ymd - days(wday)) %>%
     dplyr::select(c('week_start', 'sales_ymd', 'wday'))
@@ -1921,7 +1926,7 @@ df_receipt %>%
 
 ```{r r074_print, eval=TRUE, echo=FALSE, cache=TRUE}
 df_r074 <- df_receipt %>%
-    dplyr::mutate(sales_ymd=lubridate::parse_date_time(sales_ymd ,"%y%m%d")) %>%
+    dplyr::mutate(sales_ymd=lubridate::parse_date_time(sales_ymd ,'%y%m%d')) %>%
     dplyr::mutate(wday=lubridate::wday(sales_ymd, week_start=1) - 1) %>%
     dplyr::mutate(week_start=sales_ymd - days(wday)) %>%
     dplyr::select(c('week_start', 'sales_ymd', 'wday'))
@@ -2064,12 +2069,13 @@ df_r077_sd %>%
     kable() %>% kable_styling()
 
 g <- ggplot(df_r077, aes(x=amount))
-g <- g + geom_histogram()
+g <- g + geom_histogram(color='black', fill='gray60')
 g <- g + geom_vline(xintercept=c(amount_minus_3sd, amount_mean, amount_plus_3sd), color='royalblue2')
+g <- g + theme_bw()
 plot(g)
 ```
 
-25, 50, 75%分位点と、1.5 IQRを用いた閾値はこのようになる。
+25, 50, 75%分位点と、1.5 IQRを用いた閾値はこのようになる。公式解答集の確認用コードの値が不明だが、R-078の結果は一致する。
 
 ```{r r078_print, eval=TRUE, echo=FALSE, message=FALSE, cache=TRUE}
 df_r078_quantile %>%
@@ -2077,9 +2083,10 @@ df_r078_quantile %>%
     kable() %>% kable_styling()
 
 g <- ggplot(df_r077, aes(x=amount))
-g <- g + geom_histogram()
+g <- g + geom_histogram(color='black', fill='gray60')
 g <- g + geom_vline(xintercept=amount_qs, color='orchid2')
 g <- g + geom_vline(xintercept=c(amount_lower, amount_upper), color='orchid2', linetype='dashed')
+g <- g + theme_bw()
 plot(g)
 ```
 
@@ -2087,10 +2094,21 @@ plot(g)
 
 ```{r r077_078_print, eval=TRUE, echo=FALSE, message=FALSE, cache=TRUE}
 g <- ggplot(df_r077, aes(x=amount))
-g <- g + geom_histogram()
+g <- g + geom_histogram(color='black', fill='gray60')
 g <- g + geom_vline(xintercept=c(amount_minus_3sd, amount_mean, amount_plus_3sd), color='royalblue2')
 g <- g + geom_vline(xintercept=amount_qs, color='orchid2')
 g <- g + geom_vline(xintercept=c(amount_lower, amount_upper), color='orchid2', linetype='dashed')
+g <- g + theme_bw()
+plot(g)
+```
+
+お金の話は対数正規分布に従うとよく言われる。X軸=金額を対数にするとどうだろうか。
+
+```{r r077_078_print_log, eval=TRUE, echo=FALSE, message=FALSE, cache=TRUE}
+g <- ggplot(df_r077, aes(x=amount))
+g <- g + geom_histogram(color='black', fill='royalblue1', bins=50)
+g <- g + scale_x_log10()
+g <- g + theme_bw()
 plot(g)
 ```
 
@@ -2175,7 +2193,7 @@ assertthat::assert_that(!all(dplyr::near(df_product3$unit_cost, df_product4$unit
 df_joined_r084 <- dplyr::left_join(df_customer, df_receipt, by='customer_id')
 df_joined_r084$amount[is.na(df_joined_r084$amount)] <- 0
 df_joined_r084 <- df_joined_r084 %>%
-    dplyr::mutate(sales_year=lubridate::year(lubridate::parse_date_time(sales_ymd ,"%y%m%d")))
+    dplyr::mutate(sales_year=lubridate::year(lubridate::parse_date_time(sales_ymd ,'%y%m%d')))
 
 df_r084_full <- df_joined_r084 %>%
     dplyr::group_by(customer_id) %>%
@@ -2268,7 +2286,7 @@ df_customer_2 <- dplyr::inner_join(df_customer_1, df_store, by=c('application_st
     geosphere::distm(c(row_data$longitude.x, row_data$latitude.x),
                      c(row_data$longitude.y, row_data$latitude.y),
                      fun = distHaversine)[,1]
-}, .collate=c("cols"), .to = "dist") %>%
+}, .collate=c('cols'), .to = 'dist') %>%
     dplyr::select(c('customer_id', 'address_customer', 'address_store', 'dist'))
 ```
 
@@ -2385,7 +2403,7 @@ NROW(df_customer) - NROW(unique(df_customer_n$customer_id))
 
 データは先ほど名寄せした顧客として(問題文には明記されていないが)、ランダムに行を選ぼう。
 
-公式解答集では、df_customer と df_receipt を inner_join したものに、 **rsample::initial_split** を用いている。
+公式解答集では、df_customer と df_receipt を inner_join したものに、 **rsample::initial_split** を用いている。df_receipt　に載っているが、df_customerに載っていない客が除外される。また名寄せをしていない。
 
 ```{r r089_sample, eval=TRUE, echo=TRUE, cache=TRUE}
 df_sample_r089 <- df_customer_u %>%
@@ -2400,6 +2418,11 @@ assertthat::assert_that(dplyr::near(NROW(df_sample_r089) * 0.8, NROW(train_set_r
 assertthat::assert_that(dplyr::near(NROW(df_sample_r089) * 0.2, NROW(test_set_r089), tol=2))
 ```
 
+```{r r089_nrow, eval=TRUE, echo=TRUE, cache=TRUE}
+NROW(train_set_r089)
+NROW(test_set_r089)
+```
+
 ```{r r089, eval=FALSE, echo=FALSE, cache=TRUE}
 df_sample_r089[train_set_r089,]
 df_sample_r089[test_set_r089,]
@@ -2412,6 +2435,22 @@ df_sample_r089[test_set_r089,] %>%
     head(10) %>% kable() %>% kable_styling()
 ```
 
+公式解答集のとおり前処理したデータフレームを使うと、サンプル数が1異なる。
+
+```{r r089_expected, eval=TRUE, echo=FALSE, cache=TRUE}
+## 公式解答集
+df_sales_amount <- df_receipt %>%
+    group_by(customer_id) %>%
+    summarise(sum_amount = sum(amount))
+
+df_customer_s <- inner_join(df_customer, df_sales_amount, by='customer_id')
+n_samples_expected <- NROW(df_customer_s)
+train_set_r089_expected <- sort(sample(1:n_samples_expected, n_samples_expected * 0.8, replace=FALSE))
+test_set_r089_expected <- setdiff(1:n_samples_expected, train_set_r089_expected)
+NROW(train_set_r089_expected)
+NROW(test_set_r089_expected)
+```
+
 ### R-090
 
 月次で集計する。
@@ -2420,7 +2459,7 @@ df_sample_r089[test_set_r089,] %>%
 
 ```{r r090, eval=TRUE, echo=TRUE, cache=FALSE}
 df_r090 <- df_receipt %>%
-    dplyr::mutate(sales_ymd=lubridate::parse_date_time(sales_ymd ,"%y%m%d")) %>%
+    dplyr::mutate(sales_ymd=lubridate::parse_date_time(sales_ymd ,'%y%m%d')) %>%
     dplyr::mutate(year=lubridate::year(sales_ymd), month=lubridate::month(sales_ymd)) %>%
     dplyr::group_by(year, month) %>%
     dplyr::summarize(amount=sum(amount)) %>%
@@ -2463,12 +2502,13 @@ get_monthly_samples() %>% kable() %>% kable_styling()
 
 ```{r r091_print, eval=TRUE, echo=TRUE, cache=TRUE}
 n_samples <- 100
-df_r091_non_zeros <- df_joined_r084 %>%
+df_r091 <- df_joined_r084
+df_r091_non_zeros <- df_r091 %>%
     dplyr::filter(amount > 0) %>%
     dplyr::sample_n(size=n_samples, replace=FALSE) %>%
     dplyr::ungroup()
 
-df_r091_zeros <- df_joined_r084 %>%
+df_r091_zeros <- df_r091 %>%
     dplyr::filter(amount == 0) %>%
     dplyr::sample_n(size=n_samples, replace=FALSE) %>%
     dplyr::ungroup()
@@ -2517,9 +2557,15 @@ dplyr::left_join(df_product, df_category,
     head(10) %>% kable() %>% kable_styling()
 ```
 
-公式解答集は category_small_cd のみを用いているが、なぜだろう。
+公式解答集は category_small_cd のみを用いているが、なぜだろう。確認したところ、category_small_cd に一意性はありそうだ。
 
-stringr::str_starts
+```{r r093_confirm, eval=TRUE, echo=TRUE, cache=TRUE}
+assertthat::assert_that(NROW(df_category) == NROW(df_category %>%
+    dplyr::distinct(category_small_cd, .keep_all=TRUE)))
+assertthat::assert_that(NROW(df_product %>%
+    dplyr::distinct(category_major_cd, category_medium_cd, category_small_cd)) ==
+    NROW(df_product %>% dplyr::distinct(category_small_cd, .keep_all=TRUE)))
+```
 
 ## ファイル入出力
 
@@ -2606,7 +2652,7 @@ assertthat::assert_that(!stringr::str_detect(readLines(filename, n=1, warn=FALSE
 df_r096 %>% head(10) %>% kable() %>% kable_styling()
 ```
 
-## R-099, R-100
+### R-099, R-100
 
 **readr::write_tsv**を使う。
 
