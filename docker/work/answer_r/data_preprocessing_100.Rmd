@@ -20,7 +20,7 @@ urlcolor: blue
 
 [データサイエンス100本ノック（構造化データ加工編）](https://github.com/The-Japan-DataScientist-Society/100knocks-preprocess)の、R版についての私の解答です。正解例は公式をみてください。
 
-公式解答集と比較し、既知の誤りは訂正してあります。R-038, R-039, R-078, R-093については検討中です。R-089, 090, 091 はあっていると思いますが、乱数なので再現できないのと、公式解答集が私の知らないパッケージを用いているのでこれから調べます。
+公式解答集と比較し、既知の誤りは訂正してあります。R-078, R-093については検討中です。R-089, 090, 091 はあっていると思いますが、乱数なので再現できないのと、公式解答集が私の知らないパッケージを用いているのでこれから調べます。
 
 浮動小数を==で比較しているのは、本当は **dplyr::near** などを使うのが正しいです。
 
@@ -72,6 +72,12 @@ df_customer <- readr::read_csv('../data/customer.csv')
 df_product <- readr::read_csv('../data/product.csv')
 df_category <- readr::read_csv('../data/category.csv')
 df_geocode <- as_tibble(data.table::fread('../data/geocode.csv'))
+```
+
+```{r filter_data_sets, echo=FALSE, warning=FALSE, message=FALSE, cache=TRUE}
+## 後で使う
+df_receipt_z_excluded <- df_receipt %>%
+    dplyr::filter(!stringr::str_starts(customer_id, 'Z'))
 ```
 
 ## 列に対する動作
@@ -974,8 +980,11 @@ dplyr::inner_join(df_product, df_category) %>%
 
 **dplyr::left_join** を使えば、買い物実績が無い顧客についても結合できる。
 
+(gender_cd==1)でフィルタするのを忘れていました。
+
 ```{r r038, eval=FALSE, echo=TRUE, cache=TRUE}
 df_joined <- dplyr::left_join(df_customer, df_receipt_z_excluded, by='customer_id') %>%
+    dplyr::filter(gender_cd==1) %>%
     dplyr::group_by(customer_id) %>%
     dplyr::summarize(amount=sum(amount)) %>%
     dplyr::ungroup()
@@ -984,6 +993,7 @@ df_joined$amount[is.na(df_joined$amount)] <- 0
 
 ```{r r038_print, eval=TRUE, echo=FALSE, cache=TRUE}
 df_joined <- dplyr::left_join(df_customer, df_receipt_z_excluded, by='customer_id') %>%
+    dplyr::filter(gender_cd==1) %>%
     dplyr::group_by(customer_id) %>%
     dplyr::summarize(amount=sum(amount)) %>%
     dplyr::ungroup()
@@ -1019,33 +1029,106 @@ df_receipt_z_excluded %>%
     kable() %>% kable_styling()
 ```
 
+公式解答集と順番が異なるので、ソートして確認しよう。
+
+```{r r038_check, eval=TRUE, echo=TRUE, cache=TRUE}
+## 公式解答集
+df_sum <- df_receipt %>%
+    filter(!grepl("^Z", customer_id)) %>%
+    group_by(customer_id) %>%
+    summarise(sum_amount=sum(amount))
+
+df_target <- df_customer %>%
+    filter(!grepl("^Z", customer_id) & gender_cd == '1')
+
+df_r038_expected <- left_join(df_target['customer_id'], df_sum, by = 'customer_id') %>%
+    replace_na(list(sum_amount=0)) %>%
+    dplyr::arrange(customer_id) %>%
+    dplyr::rename(amount=sum_amount)
+
+## 私の解答
+df_r038_actual <- df_joined %>%
+    dplyr::arrange(customer_id)
+
+assertthat::assert_that(all(dim(df_r038_expected) == dim(df_r038_actual)))
+assertthat::assert_that(all(colnames(df_r038_expected) == colnames(df_r038_actual)))
+purrr::map(colnames(df_r038_expected), function(col_name) {
+    assertthat::assert_that(all(df_r038_expected[[col_name]] == df_r038_actual[[col_name]]))
+})
+```
+
 ### R-039
 
 完全外部結合とはfull joinのことなので、そのものずばり **dplyr::full_join** を使う。
 
-```{r r039, eval=FALSE, echo=TRUE, cache=TRUE}
+```{r r039, eval=TRUE, echo=TRUE, cache=TRUE}
 df_r039 <- df_receipt_z_excluded %>%
     dplyr::select(c('customer_id', 'sales_ymd', 'amount')) %>%
     dplyr::group_by(customer_id) %>%
-    dplyr::summarize(n_day=NROW(unique(sales_ymd)), amount=sum(amount)) %>%
-    dplyr::ungroup() %>%
-    dplyr::arrange(n_day, amount)
+    dplyr::summarize(amount=sum(amount), n_day=NROW(unique(sales_ymd))) %>%
+    dplyr::ungroup()
 
-dplyr::full_join(df_r039 %>% dplyr::top_n(20, n_day),
-                 df_r039 %>% dplyr::top_n(20, amount))
+df_r039_n_day <- df_r039 %>% dplyr::top_n(20, n_day)
+df_r039_amount <- df_r039 %>% dplyr::top_n(20, amount)
+
+df_r039_actual <- dplyr::full_join(df_r039_n_day, df_r039_amount) %>%
+    dplyr::arrange(customer_id, n_day)
 ```
 
 ```{r r039_join_print, eval=TRUE, echo=FALSE, cache=TRUE}
-df_r039 <- df_receipt_z_excluded %>%
-    dplyr::select(c('customer_id', 'sales_ymd', 'amount')) %>%
-    dplyr::group_by(customer_id) %>%
-    dplyr::summarize(n_day=NROW(unique(sales_ymd)), amount=sum(amount)) %>%
-    dplyr::ungroup() %>%
-    dplyr::arrange(n_day, amount)
-
-dplyr::full_join(df_r039 %>% dplyr::top_n(20, n_day),
-                 df_r039 %>% dplyr::top_n(20, amount)) %>%
+df_r039_actual %>%
     kable() %>% kable_styling()
+```
+
+公式解答集と順番が異なるので、ソートして確認しよう。
+
+```{r r039_check, eval=TRUE, echo=TRUE, cache=TRUE}
+## 公式解答集
+df_sum <- df_receipt %>%
+    filter(!grepl("^Z", customer_id)) %>%
+    group_by(customer_id) %>%
+    summarise(sum_amount=sum(amount)) %>%
+    arrange(desc(sum_amount)) %>%
+    slice(1:20)
+
+df_cnt <- df_receipt %>%
+    filter(!grepl("^Z", customer_id)) %>%
+    group_by(customer_id) %>%
+    summarise(come_days=n_distinct(sales_ymd)) %>%
+    arrange(desc(come_days), customer_id) %>%
+    slice(1:20)
+
+df_r039_expected <- full_join(df_sum, df_cnt, by = "customer_id") %>%
+    dplyr::arrange(customer_id) %>%
+    dplyr::rename(amount=sum_amount, n_day=come_days)
+
+dim(df_r039_expected)
+dim(df_r039_actual)
+customer_id_diff <- setdiff(df_r039_actual$customer_id, df_r039_expected$customer_id)
+customer_id_diff
+
+df_r039_actual %>%
+    dplyr::filter(customer_id %in%customer_id_diff)
+sort(df_r039_expected$n_day, decreasing=TRUE)
+sort(df_r039_actual$n_day, decreasing=TRUE)
+```
+
+私の解答の方が一件多いようだ。理由は18日以上が21件あるからだ。
+
+**dplyr::top_n(20, n_day)** は20件以上返すので、20件で打ち切る。公式解答集ではsum_amountまたはcome_daysがNAなので、比較しない。
+
+```{r r039_renew, eval=TRUE, echo=TRUE, cache=TRUE}
+df_r039_actual_20 <- dplyr::full_join(df_r039_n_day %>%
+    dplyr::arrange(desc(n_day)) %>%
+    head(20), df_r039_amount) %>%
+    dplyr::arrange(customer_id, n_day)
+
+assertthat::assert_that(all(dim(df_r039_expected) == dim(df_r039_actual_20)))
+assertthat::assert_that(all(colnames(df_r039_expected) == colnames(df_r039_actual_20)))
+purrr::map(colnames(df_r039_expected), function(col_name) {
+    assertthat::assert_that(all(ifelse(is.na(df_r039_expected[[col_name]]), TRUE,
+        (df_r039_expected[[col_name]] == df_r039_actual_20[[col_name]]))))
+})
 ```
 
 ### R-040
