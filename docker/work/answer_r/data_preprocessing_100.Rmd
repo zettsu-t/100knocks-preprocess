@@ -1084,6 +1084,30 @@ df_r039_actual %>%
     kable() %>% kable_styling()
 ```
 
+公式解答集では **n_distinct** を用いている。こちらの方が簡潔に書ける。
+
+```{r r039_improved, eval=TRUE, echo=TRUE, cache=TRUE}
+df_r039_improved <- df_receipt_z_excluded %>%
+    dplyr::select(c('customer_id', 'sales_ymd', 'amount')) %>%
+    dplyr::group_by(customer_id) %>%
+    dplyr::summarize(amount=sum(amount), n_day=n_distinct(sales_ymd)) %>%
+    dplyr::ungroup()
+
+df_r039_actual_improved <- dplyr::full_join(df_r039_improved %>% dplyr::top_n(20, n_day),
+        df_r039_improved %>% dplyr::top_n(20, amount)) %>%
+    dplyr::arrange(customer_id, n_day)
+
+assertthat::assert_that(all(dim(df_r039_actual) == dim(df_r039_actual_improved)))
+assertthat::assert_that(all(df_r039_actual$customer_id == df_r039_actual_improved$customer_id))
+assertthat::assert_that(all(df_r039_actual$amount == df_r039_actual_improved$amount))
+assertthat::assert_that(all(df_r039_actual$n_day == df_r039_actual_improved$n_day))
+```
+
+```{r r039_improved_join_print, eval=TRUE, echo=FALSE, cache=TRUE}
+df_r039_actual_improved %>%
+    kable() %>% kable_styling()
+```
+
 公式解答集と順番が異なるので、ソートして確認しよう。
 
 ```{r r039_check, eval=TRUE, echo=TRUE, cache=TRUE}
