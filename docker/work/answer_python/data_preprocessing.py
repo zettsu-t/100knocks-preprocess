@@ -2,12 +2,12 @@
 # coding: utf-8
 
 ## データサイエンス100本ノック (構造化データ加工編) Python版の私の解答 by プログラマたんbot
-## 丸一日かけて、100-6本打ってみました。
+## 丸一日 + ちょっとかけて、100本打ってみました。
 ## まだ答え合わせをしていないので、解答は間違っている可能性があります。
-## ★ P-070..P-074 と P-090 は後で
 
 import os
 import re
+from dateutil.relativedelta import relativedelta
 from geopy.distance import geodesic
 import numpy as np
 import pandas as pd
@@ -305,14 +305,41 @@ df_r069_07 = df_r069_07.loc[:, ['customer_id', 'amount']].groupby('customer_id')
 df_r069_joined = df_r069_07.merge(df_r069_full, how='inner')
 df_r069_joined['ratio'] = df_r069_joined['amount07'] / df_r069_joined['amount']
 
-## ★ P-070..P-074後で!
+## P-070..P-073
 ## 日付は変換済とする
 df_receipt = pd.read_csv('../data/receipt.csv', low_memory=False)
 df_customer = pd.read_csv('../data/customer.csv', low_memory=False)
 df_r070_date = df_receipt.merge(df_customer, how='inner')
 df_r070_date['application_date'] = pd.to_datetime(df_r070_date['application_date'], format='%Y%m%d')
 df_r070_date['sales_ymd'] = pd.to_datetime(df_r070_date['sales_ymd'], format='%Y%m%d')
-df_r070_date['elapsed'] = pd.date_range(str(pd.DatetimeIndex(df_r070_date['application_date'])), str(pd.DatetimeIndex(df_r070_date['sales_ymd'])))
+
+df_r070_date['diff_sec'] = df_r070_date['sales_ymd'] - df_r070_date['application_date']
+df_r070_date['elapsed_seconds'] = df_r070_date['diff_sec'] / np.timedelta64(1, 's')
+df_r070_date['elapsed_day'] = df_r070_date['diff_sec'] / np.timedelta64(1, 'D')
+
+df_r070_date['elapsed'] = [relativedelta(df_r070_date.loc[i,'sales_ymd'], df_r070_date.loc[i,'application_date']) for i in range(df_r070_date.shape[0])]
+df_r070_date['elapsed_year'] = [x.years for x in df_r070_day['elapsed']]
+df_r070_date['elapsed_month'] = [x.years * 12 + x.months for x in df_r070_day['elapsed']]
+
+## P-070
+df_r070_date.loc[:,['customer_id', 'application_date', 'sales_ymd', 'elapsed_day']]
+
+## P-071
+df_r070_date.loc[:,['customer_id', 'application_date', 'sales_ymd', 'elapsed_month']]
+
+## P-072
+df_r070_date.loc[:,['customer_id', 'application_date', 'sales_ymd', 'elapsed_year']]
+
+## P-073
+df_r070_date.loc[:,['customer_id', 'application_date', 'sales_ymd', 'elapsed_seconds']]
+
+## P-074
+df_r070_date['dayofweek'] = pd.DatetimeIndex(df_r070_date['sales_ymd']).dayofweek
+df_r070_date['week_start'] = [df_r070_date.loc[i, 'sales_ymd'] + relativedelta(days=-int(df_r070_date.loc[i, 'dayofweek'])) for i in range(df_r070_date.shape[0])]
+df_r070_date.loc[:,['sales_ymd', 'dayofweek', 'week_start']]
+
+## P-075
+df = df_customer.sample(frac=0.1)
 
 ## P-076
 df = df_customer.groupby('gender').apply(lambda x: x.sample(frac=0.1))
@@ -388,7 +415,19 @@ df_train, df_test = train_test_split(df_sample_r089, train_size=0.8)
 print(df_train.shape)
 print(df_test.shape)
 
-## ★ P-090 後で
+## P-090
+df_r090_date = pd.read_csv('../data/receipt.csv', low_memory=False)
+df_r090_date['sales_ymd'] = pd.to_datetime(df_r090_date['sales_ymd'], format='%Y%m%d')
+df_r090_date['year'] = pd.DatetimeIndex(df_r090_date['sales_ymd']).year
+df_r090_date['month'] = pd.DatetimeIndex(df_r090_date['sales_ymd']).month
+df_r090_date = df_r090_date.loc[:,['year', 'month', 'amount']].groupby(['year', 'month']).sum().reset_index().sort_values(['year', 'month'])
+df_r090_date['index'] = range(df_r090_date.shape[0])
+
+n_train = 12
+n_test = 6
+df = df_r090_date.sample(n_train + n_test).sort_values(['index'])
+df_train = df.head(n_train)
+df_test = df.tail(n_test)
 
 ## P-091
 n_samples = 100
