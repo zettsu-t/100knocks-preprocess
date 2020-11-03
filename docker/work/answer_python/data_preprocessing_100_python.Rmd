@@ -1,0 +1,470 @@
+---
+title: "データサイエンス100本ノック (構造化データ加工編) 私の解答"
+author: "プログラマたんbot"
+date: '`r format(Sys.time(), "%Y/%m/%d")`'
+output:
+  html_document:
+    toc: true
+  pdf_document:
+    latex_engine: xelatex
+  beamer_presentation:
+    pandoc_args:
+    - --latex-engine
+    - xelatex
+header-includes:
+  \usepackage{float}
+documentclass: bxjsarticle
+classoption: xelatex,ja=standard
+urlcolor: blue
+---
+
+[データサイエンス100本ノック（構造化データ加工編）](https://github.com/The-Japan-DataScientist-Society/100knocks-preprocess)の、Python版についての私の解答です。正解例は公式をみてください。
+
+まだ答え合わせはしていません。後日公式解答集と比較して誤りを訂正します。
+
+## 問題を解く環境をインストールする
+
+上記公式サイトの手順に従って、インストールする。
+
+このR Markdown文書では、入力データの docker/work/data/*.csv のみを使うので、Dockerを起動する必要はない。RStudioからこの.Rmdファイルをknitrすると、実行結果を埋め込んだHTMLなどに変換して読めるようになる。RだけでなくPythonのコードも実行して結果を埋め込むことができる。
+
+## 問題を解く準備をする
+
+### この解答例で使用するRパッケージをロードする
+
+```{python load_packages, echo=TRUE, warning=FALSE, message=FALSE, cache=FALSE}
+import os
+import re
+from dateutil.relativedelta import relativedelta
+from geopy.distance import geodesic
+import numpy as np
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import train_test_split
+```
+
+以下の目的でPythonのパッケージを用いる。Rにも対応するパッケージがあるが、明示的なパッケージが不要な場合(baseなど)もある。
+
+|用途|Pythonのパッケージ|Rのパッケージ|
+|:------------|:---------------------------------|:---------------------------------------------------------|
+|ファイルパス|os|(base)|
+|文字列|re|stringr|
+|時刻と間隔|dateutil.relativedelta|lubridate|
+|緯度経度と距離|geopy.distance|geosphere|
+|数値計算|numpy|(base)|
+|Data frame|pandas|Tidyverse(readr, tibble, dplyr, tidyr), mlr(ダミー化)|
+|正規化と標準化|sklearn.preprocessing.*Scaler|scales|
+|サンプル選択|sklearn.model_selection|unbalanced|
+
+### この問題で使用するデータを読み込む
+
+geocode.csvの先頭行には余分な空白があり、latitudeという列名の前に空白が入るので、読み込んでから空白を取り除く。
+
+※ 公式解答集ではDBから読み込んでいるが、ここではCSVファイルを読み込む。
+
+```{python load_data_sets, echo=TRUE, warning=FALSE, message=FALSE, cache=FALSE}
+df_receipt = pd.read_csv('../data/receipt.csv', low_memory=False)
+df_store = pd.read_csv('../data/store.csv', low_memory=False)
+df_customer = pd.read_csv('../data/customer.csv', low_memory=False)
+df_product = pd.read_csv('../data/product.csv', low_memory=False)
+df_category = pd.read_csv('../data/category.csv', low_memory=False)
+df_geocode = pd.read_csv('../data/geocode.csv', low_memory=False).rename(columns={' latitude': 'latitude'})
+```
+
+```{python filter_data_sets, echo=FALSE, warning=FALSE, message=FALSE, cache=FALSE}
+## 後で使う
+df_receipt_z_excluded = df_receipt[df_receipt['customer_id'].apply(lambda x: not x.startswith('Z'))]
+```
+
+## 列に対する動作
+
+### P-001
+
+Rと同様に **head()** を使うと、先頭から指定行だけ取り出すことができる。R Markdownではコードチャンクを **results='asis'** にして、 **print(df.to_markdown())** を使うとテーブルに整形できる。
+
+```{python r001_print_1, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df = df_receipt.head(n=10)
+print(df.to_markdown())
+```
+
+行番号を選択してしてもよい。Rとは異なり、 **.loc** が必要である(無いとエラーになる)。行番号は0から始まる(Rは1始まり)。
+
+```{python r001_print_2, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df = df_receipt.loc[0:9,]
+print(df.to_markdown())
+```
+
+### P-002
+
+すべての行または列を指定するときは、:を置く(Rでは置かないし、先の例では省略できた)。
+
+```{python r002_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df = df_receipt.loc[:, ['sales_ymd', 'customer_id', 'product_cd', 'amount']].head(n=10)
+print(df.to_markdown())
+```
+
+### P-003
+
+renameは引数で **inplace=True** にしない限り元のオブジェクトを置き換えないので、変更後のオブジェクトを返す。
+
+```{python r003_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df = df_receipt.loc[:, ['sales_ymd', 'customer_id', 'product_cd', 'amount']].rename(columns={'sales_ymd': 'sales_date'}).head(n=10)
+print(df.to_markdown())
+```
+
+## 行に対する動作
+
+### P-004
+
+行選択に条件を書く。
+
+```{python r004_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df = df_receipt.loc[df_receipt.customer_id == 'CS018205000001', ['sales_ymd', 'customer_id', 'product_cd', 'amount']]
+print(df.to_markdown())
+```
+
+### P-005
+
+条件を複数書ける。P-004の一部の行が選ばれたことが分かる。
+
+```{python r005_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df = df_receipt.loc[(df_receipt.customer_id == 'CS018205000001') & (df_receipt.amount >= 1000),
+                     ['sales_ymd', 'customer_id', 'product_cd', 'amount']]
+print(df.to_markdown())
+```
+
+### P-006
+
+```{python r006_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df = df_receipt.loc[(df_receipt.customer_id == 'CS018205000001') & ((df_receipt.amount >= 1000) | (df_receipt.quantity >= 5)),
+                    ['sales_ymd', 'customer_id', 'product_cd', 'amount']]
+print(df.to_markdown())
+```
+
+### P-007
+
+```{python r007_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df = df_receipt.loc[(df_receipt.customer_id == 'CS018205000001') & (df_receipt.amount >= 1000) & (df_receipt.amount <= 2000),
+                    ['sales_ymd', 'customer_id', 'product_cd', 'amount']]
+print(df.to_markdown())
+```
+
+### P-008
+
+```{python r008_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df = df_receipt.loc[(df_receipt.customer_id == 'CS018205000001') & (df_receipt.product_cd != 'P071401019'),
+                    ['sales_ymd', 'customer_id', 'product_cd', 'amount']]
+print(df.to_markdown())
+```
+
+### P-009
+
+二つのデータフレームが等しいかどうかは、 **equals** で調べる。
+
+```{python r009_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_expected = df_store.query('not(prefecture_cd == "13" | floor_area > 900)')
+print(df.to_markdown())
+df_actual = df_store.query('prefecture_cd != "13" & floor_area <= 900')
+assert df_expected.equals(df_actual)
+```
+
+## あいまい条件
+
+### P-010
+
+列に関数を適用して、条件に一致する行を選ぶ。
+
+```{python r010_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df = df_store[df_store['store_cd'].apply(lambda x: x.startswith('S14'))].head(n=10)
+print(df.to_markdown())
+```
+
+### P-011
+
+```{python r011_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df = df_customer[df_customer['customer_id'].apply(lambda x: x.endswith('1'))].head(n=10)
+print(df.to_markdown())
+```
+
+### P-012
+
+横浜市を含む項目を選ぶ。
+
+```{python r012_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df = df_store[df_store['address'].apply(lambda x: x.find('横浜市') >= 0)].head(n=10)
+print(df.to_markdown())
+```
+
+### P-013
+
+正規表現に一致する項目を選ぶ。
+
+```{python r013_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df = df_customer[df_customer['status_cd'].apply(lambda x: re.match(r"^[A-F]", x) is not None)].head(n=10)
+print(df.to_markdown())
+```
+
+### P-014
+
+Pythonのreはfull matching、Rのstringr::str_detectはpartial matchingである。、
+
+```{python r014_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df = df_customer[df_customer['status_cd'].apply(lambda x: re.match(r".*[1-9]$", x) is not None)].head(n=10)
+print(df.to_markdown())
+```
+
+### P-015
+
+```{python r015_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df = df_customer[df_customer['status_cd'].apply(lambda x: re.match(r"^[A-F].*[1-9]$", x) is not None)].head(n=10)
+print(df.to_markdown())
+```
+
+## ソート
+
+### P-016
+
+Pythonのr正規表現リテラルは、\\を二重にしない。
+
+```{python r016_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df = df_store[df_store['tel_no'].apply(lambda x: re.match(r"^\d{3}\-\d{3}\-\d{4}$", x) is not None)]
+print(df.to_markdown())
+```
+
+### P-017
+
+birth_day列ははstrなので日時に変換する。
+
+```{python r017_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_customer['birth_day'] = pd.to_datetime(df_customer['birth_day'], format='%Y-%m-%d')
+df = df_customer.sort_values('birth_day').head(n=10)
+print(df.to_markdown())
+```
+
+### P-018
+
+**ascending=False** にすると降順になる。
+
+```{python r018_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df = df_customer.sort_values(by='birth_day', ascending=False).head(n=10)
+print(df.to_markdown())
+```
+
+### P-019
+
+**method='dense'**にすると、同じ値は同じ順位になる。順位は連番だが、4,4,4,5の代わりに、4,4,4,7という番号付けがありうる。
+
+```{python r019_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_receipt['rank'] = df_receipt['amount'].rank(method='dense', ascending=False)
+df = df_receipt.sort_values('rank').head(n=10)
+print(df.to_markdown())
+```
+
+### P-020
+
+```{python r020_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_receipt['rank'] = df_receipt['amount'].rank(method='first', ascending=False)
+df = df_receipt.sort_values('rank').head(n=10)
+print(df.to_markdown())
+```
+
+## 集計
+
+### P-021
+
+```{python r021_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_receipt.shape[0]
+```
+
+### P-022
+
+```{python r022_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+len(df_receipt['customer_id'].unique())
+```
+
+### P-023
+
+Rの **dplyr::group_by** の代わりに、groupby を使う。ここではungroupは行わない。
+
+```{python r023_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df = df_receipt.loc[:, ['store_cd', 'amount', 'quantity']].groupby('store_cd').sum()
+print(df.to_markdown())
+```
+
+### P-024
+
+sales_ymdはstrなので日時に変換する。
+
+```{python r024_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_receipt['sales_ymd'] = pd.to_datetime(df_receipt['sales_ymd'], format='%Y%m%d')
+df = df_receipt.loc[:, ['customer_id', 'sales_ymd']].groupby('customer_id').apply(lambda x: x.sort_values(by='sales_ymd', ascending=False)).head(10)
+print(df.to_markdown())
+```
+
+### P-025
+
+```{python r025_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df = df_receipt.loc[:, ['customer_id', 'sales_ymd']].groupby('customer_id').apply(lambda x: x.sort_values(by='sales_ymd', ascending=True)).head(10)
+print(df.to_markdown())
+```
+
+### P-026
+
+### P-027
+
+### P-028
+
+### P-029
+
+### P-030
+
+### P-031
+
+### P-032
+
+### P-033
+
+## 副問合わせ
+
+### P-034
+
+### P-035
+
+## 結合
+
+### P-036
+
+### P-037
+
+### P-038
+
+### P-039
+
+### P-040
+
+### P-041
+
+### P-042
+
+## 縦横変換
+
+### P-043
+
+### P-044
+
+## データ変換
+
+### P-045
+
+### P-046
+
+### P-047
+
+### P-048
+
+### P-049, P-050, P-051
+
+### P-052
+
+### P-053
+
+### P-054
+
+### P-055
+
+### P-056
+
+### P-057
+
+### P-058
+
+## 数値変換
+
+### P-059
+
+### P-060
+
+### P-061, P-062
+
+## 四則演算
+
+### P-063
+
+### P-064
+
+### P-065, P-066, P-067
+
+### P-068
+
+### P-069
+
+## 日付型の計算
+
+### P-070, P-071, P-072, P-073
+
+### P-074
+
+## サンプリング
+
+### P-075
+
+### P-076
+
+## 外れ値・異常値
+
+### P-077, P-078
+
+## 欠損値
+
+### P-079
+
+### P-080
+
+### P-081
+
+### P-082
+
+### P-083
+
+## 除算エラー対応
+
+### P-084
+
+## 座標データ
+
+### P-085
+
+### P-086
+
+## 名寄せ
+
+### P-087
+
+### P-088
+
+## データ分割
+
+### P-089
+
+### P-090
+
+## 不均衡データ
+
+### P-091
+
+## 正規化・非正規化
+
+### P-092
+
+### P-093
+
+## ファイル入出力
+
+### P-094, P-097
+
+### P-095
+
+### P-096, P-098
+
+### P-099, P-100
