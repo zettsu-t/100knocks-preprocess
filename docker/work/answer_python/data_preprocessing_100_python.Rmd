@@ -30,7 +30,7 @@ urlcolor: blue
 
 ## 問題を解く準備をする
 
-### この解答例で使用するRパッケージをロードする
+### この解答例で使用するPythonパッケージをロードする
 
 ```{python load_packages, echo=TRUE, warning=FALSE, message=FALSE, cache=FALSE}
 import os
@@ -83,34 +83,47 @@ df_receipt_z_excluded = df_receipt[df_receipt['customer_id'].apply(lambda x: not
 
 Rと同様に **head()** を使うと、先頭から指定行だけ取り出すことができる。R Markdownではコードチャンクを **results='asis'** にして、 **print(df.to_markdown())** を使うとテーブルに整形できる。
 
-```{python r001_print_1, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
-df = df_receipt.head(n=10)
-print(df.to_markdown())
+```{python p001_print_1, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p001 = df_receipt.head(n=10)
+print(df_p001.to_markdown())
 ```
 
 行番号を選択してしてもよい。Rとは異なり、 **.loc** が必要である(無いとエラーになる)。行番号は0から始まる(Rは1始まり)。
 
-```{python r001_print_2, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
-df = df_receipt.loc[0:9,]
-print(df.to_markdown())
+```{python p001_print_2, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p001_2 = df_receipt.loc[0:9,]
+print(df_p001_2.to_markdown())
+```
+
+```{python p001_clean, eval=TRUE, echo=FALSE}
+df_p001 = None
+df_p001_2 = None
 ```
 
 ### P-002
 
 すべての行または列を指定するときは、:を置く(Rでは置かないし、先の例では省略できた)。
 
-```{python r002_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
-df = df_receipt.loc[:, ['sales_ymd', 'customer_id', 'product_cd', 'amount']].head(n=10)
-print(df.to_markdown())
+```{python p002_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p002 = df_receipt.loc[:, ['sales_ymd', 'customer_id', 'product_cd', 'amount']].head(n=10)
+print(df_p002.to_markdown())
+```
+
+```{python p002_clean, eval=TRUE, echo=FALSE}
+df_p002 = None
 ```
 
 ### P-003
 
 renameは引数で **inplace=True** にしない限り元のオブジェクトを置き換えないので、変更後のオブジェクトを返す。
 
-```{python r003_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
-df = df_receipt.loc[:, ['sales_ymd', 'customer_id', 'product_cd', 'amount']].rename(columns={'sales_ymd': 'sales_date'}).head(n=10)
-print(df.to_markdown())
+```{python p003_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p003 = df_receipt.loc[:, ['sales_ymd', 'customer_id', 'product_cd', 'amount']].rename(columns={'sales_ymd': 'sales_date'}).head(n=10)
+print(df_p003.to_markdown())
+```
+
+```{python p003_clean, eval=TRUE, echo=FALSE}
+df_p003 = None
 ```
 
 ## 行に対する動作
@@ -119,54 +132,82 @@ print(df.to_markdown())
 
 行選択に条件を書く。
 
-```{python r004_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
-df = df_receipt.loc[df_receipt.customer_id == 'CS018205000001', ['sales_ymd', 'customer_id', 'product_cd', 'amount']]
-print(df.to_markdown())
+```{python p004_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p004 = df_receipt.loc[df_receipt.customer_id == 'CS018205000001', ['sales_ymd', 'customer_id', 'product_cd', 'amount']]
+print(df_p004.to_markdown())
+```
+
+```{python p004_clean, eval=TRUE, echo=FALSE}
+df_p004 = None
 ```
 
 ### P-005
 
 条件を複数書ける。P-004の一部の行が選ばれたことが分かる。
 
-```{python r005_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
-df = df_receipt.loc[(df_receipt.customer_id == 'CS018205000001') & (df_receipt.amount >= 1000),
-                     ['sales_ymd', 'customer_id', 'product_cd', 'amount']]
-print(df.to_markdown())
+```{python p005_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p005 = df_receipt.loc[(df_receipt.customer_id == 'CS018205000001') & (df_receipt.amount >= 1000),
+                         ['sales_ymd', 'customer_id', 'product_cd', 'amount']]
+print(df_p005.to_markdown())
+```
+
+```{python p005_clean, eval=TRUE, echo=FALSE}
+df_p005 = None
 ```
 
 ### P-006
 
-```{python r006_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
-df = df_receipt.loc[(df_receipt.customer_id == 'CS018205000001') & ((df_receipt.amount >= 1000) | (df_receipt.quantity >= 5)),
-                    ['sales_ymd', 'customer_id', 'product_cd', 'amount']]
-print(df.to_markdown())
+```{python p006_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p006 = df_receipt.loc[(df_receipt.customer_id == 'CS018205000001') &
+                         ((df_receipt.amount >= 1000) | (df_receipt.quantity >= 5)),
+                         ['sales_ymd', 'customer_id', 'product_cd', 'amount']]
+print(df_p006.to_markdown())
+```
+
+```{python p006_clean, eval=TRUE, echo=FALSE}
+df_p006 = None
 ```
 
 ### P-007
 
-```{python r007_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
-df = df_receipt.loc[(df_receipt.customer_id == 'CS018205000001') & (df_receipt.amount >= 1000) & (df_receipt.amount <= 2000),
-                    ['sales_ymd', 'customer_id', 'product_cd', 'amount']]
-print(df.to_markdown())
+```{python p007_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p007 = df_receipt.loc[(df_receipt.customer_id == 'CS018205000001') &
+                         (df_receipt.amount >= 1000) & (df_receipt.amount <= 2000),
+                         ['sales_ymd', 'customer_id', 'product_cd', 'amount']]
+print(df_p007.to_markdown())
+```
+
+```{python p007_clean, eval=TRUE, echo=FALSE}
+df_p007 = None
 ```
 
 ### P-008
 
-```{python r008_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
-df = df_receipt.loc[(df_receipt.customer_id == 'CS018205000001') & (df_receipt.product_cd != 'P071401019'),
-                    ['sales_ymd', 'customer_id', 'product_cd', 'amount']]
-print(df.to_markdown())
+```{python p008_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p008 = df_receipt.loc[(df_receipt.customer_id == 'CS018205000001') &
+                         (df_receipt.product_cd != 'P071401019'),
+                         ['sales_ymd', 'customer_id', 'product_cd', 'amount']]
+print(df_p008.to_markdown())
+```
+
+```{python p008_clean, eval=TRUE, echo=FALSE}
+df_p008 = None
 ```
 
 ### P-009
 
 二つのデータフレームが等しいかどうかは、 **equals** で調べる。
 
-```{python r009_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+```{python p009_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
 df_expected = df_store.query('not(prefecture_cd == "13" | floor_area > 900)')
-print(df.to_markdown())
+print(df_expected.to_markdown())
 df_actual = df_store.query('prefecture_cd != "13" & floor_area <= 900')
 assert df_expected.equals(df_actual)
+```
+
+```{python p009_clean, eval=TRUE, echo=FALSE}
+df_expected = None
+df_actual = None
 ```
 
 ## あいまい条件
@@ -175,50 +216,77 @@ assert df_expected.equals(df_actual)
 
 列に関数を適用して、条件に一致する行を選ぶ。
 
-```{python r010_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
-df = df_store[df_store['store_cd'].apply(lambda x: x.startswith('S14'))].head(n=10)
-print(df.to_markdown())
+```{python p010_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p010 = df_store[df_store['store_cd'].apply(lambda x: x.startswith('S14'))].head(n=10)
+print(df_p010.to_markdown())
+```
+
+```{python p010_clean, eval=TRUE, echo=FALSE}
+df_p010 = None
 ```
 
 ### P-011
 
-```{python r011_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
-df = df_customer[df_customer['customer_id'].apply(lambda x: x.endswith('1'))].head(n=10)
-print(df.to_markdown())
+```{python p011_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p011 = df_customer[df_customer['customer_id'].apply(lambda x: x.endswith('1'))].head(n=10)
+print(df_p011.to_markdown())
+```
+
+```{python p011_clean, eval=TRUE, echo=FALSE}
+df_p011 = None
 ```
 
 ### P-012
 
 横浜市を含む項目を選ぶ。
 
-```{python r012_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
-df = df_store[df_store['address'].apply(lambda x: x.find('横浜市') >= 0)].head(n=10)
-print(df.to_markdown())
+```{python p012_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p012 = df_store[df_store['address'].apply(lambda x: x.find('横浜市') >= 0)].head(n=10)
+print(df_p012.to_markdown())
+```
+
+```{python p012_clean, eval=TRUE, echo=FALSE}
+df_p012 = None
 ```
 
 ### P-013
 
 正規表現に一致する項目を選ぶ。
 
-```{python r013_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
-df = df_customer[df_customer['status_cd'].apply(lambda x: re.match(r"^[A-F]", x) is not None)].head(n=10)
-print(df.to_markdown())
+```{python p013_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p013 = df_customer[df_customer['status_cd'].
+    apply(lambda x: re.match(r"^[A-F]", x) is not None)].head(n=10)
+print(df_p013.to_markdown())
+```
+
+```{python p013_clean, eval=TRUE, echo=FALSE}
+df_p013 = None
 ```
 
 ### P-014
 
 Pythonのreはfull matching、Rのstringr::str_detectはpartial matchingである。、
 
-```{python r014_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
-df = df_customer[df_customer['status_cd'].apply(lambda x: re.match(r".*[1-9]$", x) is not None)].head(n=10)
-print(df.to_markdown())
+```{python p014_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p014 = df_customer[df_customer['status_cd'].
+    apply(lambda x: re.match(r".*[1-9]$", x) is not None)].head(n=10)
+print(df_p014.to_markdown())
+```
+
+```{python p014_clean, eval=TRUE, echo=FALSE}
+df_p014 = None
 ```
 
 ### P-015
 
-```{python r015_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
-df = df_customer[df_customer['status_cd'].apply(lambda x: re.match(r"^[A-F].*[1-9]$", x) is not None)].head(n=10)
-print(df.to_markdown())
+```{python p015_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p015 = df_customer[df_customer['status_cd'].
+    apply(lambda x: re.match(r"^[A-F].*[1-9]$", x) is not None)].head(n=10)
+print(df_p015.to_markdown())
+```
+
+```{python p015_clean, eval=TRUE, echo=FALSE}
+df_p015 = None
 ```
 
 ## ソート
@@ -227,59 +295,79 @@ print(df.to_markdown())
 
 Pythonのr正規表現リテラルは、\\を二重にしない。
 
-```{python r016_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
-df = df_store[df_store['tel_no'].apply(lambda x: re.match(r"^\d{3}\-\d{3}\-\d{4}$", x) is not None)]
-print(df.to_markdown())
+```{python p016_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p016 = df_store[df_store['tel_no'].apply(lambda x: re.match(r"^\d{3}\-\d{3}\-\d{4}$", x) is not None)]
+print(df_p016.to_markdown())
+```
+
+```{python p016_clean, eval=TRUE, echo=FALSE}
+df_p016 = None
 ```
 
 ### P-017
 
 birth_day列ははstrなので日時に変換する。
 
-```{python r017_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+```{python p017_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
 df_customer['birth_day'] = pd.to_datetime(df_customer['birth_day'], format='%Y-%m-%d')
-df = df_customer.sort_values('birth_day').head(n=10)
-print(df.to_markdown())
+df_p017 = df_customer.sort_values('birth_day').head(n=10)
+print(df_p017.to_markdown())
+```
+
+```{python p017_clean, eval=TRUE, echo=FALSE}
+df_p017 = None
 ```
 
 ### P-018
 
 **ascending=False** にすると降順になる。
 
-```{python r018_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
-df = df_customer.sort_values(by='birth_day', ascending=False).head(n=10)
-print(df.to_markdown())
+```{python p018_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p018 = df_customer.sort_values(by='birth_day', ascending=False).head(n=10)
+print(df_p018.to_markdown())
+```
+
+```{python p018_clean, eval=TRUE, echo=FALSE}
+df_p018 = None
 ```
 
 ### P-019
 
 **method='dense'**にすると、同じ値は同じ順位になる。順位は連番だが、4,4,4,5の代わりに、4,4,4,7という番号付けがありうる。
 
-```{python r019_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+```{python p019_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
 df_receipt['rank'] = df_receipt['amount'].rank(method='dense', ascending=False)
-df = df_receipt.sort_values('rank').head(n=10)
-print(df.to_markdown())
+df_p019 = df_receipt.sort_values('rank').head(n=10)
+print(df_p019.to_markdown())
+```
+
+```{python p019_clean, eval=TRUE, echo=FALSE}
+df_p019 = None
 ```
 
 ### P-020
 
-```{python r020_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+```{python p020_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
 df_receipt['rank'] = df_receipt['amount'].rank(method='first', ascending=False)
-df = df_receipt.sort_values('rank').head(n=10)
-print(df.to_markdown())
+df_p020 = df_receipt.sort_values('rank').head(n=10)
+print(df_p020.to_markdown())
+```
+
+```{python p020_clean, eval=TRUE, echo=FALSE}
+df_p020 = None
 ```
 
 ## 集計
 
 ### P-021
 
-```{python r021_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+```{python p021_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
 df_receipt.shape[0]
 ```
 
 ### P-022
 
-```{python r022_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+```{python p022_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
 len(df_receipt['customer_id'].unique())
 ```
 
@@ -287,184 +375,915 @@ len(df_receipt['customer_id'].unique())
 
 Rの **dplyr::group_by** の代わりに、groupby を使う。ここではungroupは行わない。
 
-```{python r023_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
-df = df_receipt.loc[:, ['store_cd', 'amount', 'quantity']].groupby('store_cd').sum()
-print(df.to_markdown())
+```{python p023_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p023 = df_receipt.loc[:, ['store_cd', 'amount', 'quantity']].groupby('store_cd').sum()
+print(df_p023.to_markdown())
+```
+
+```{python p023_clean, eval=TRUE, echo=FALSE}
+df_p023 = None
 ```
 
 ### P-024
 
 sales_ymdはstrなので日時に変換する。
 
-```{python r024_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+```{python p024_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
 df_receipt['sales_ymd'] = pd.to_datetime(df_receipt['sales_ymd'], format='%Y%m%d')
-df = df_receipt.loc[:, ['customer_id', 'sales_ymd']].groupby('customer_id').apply(lambda x: x.sort_values(by='sales_ymd', ascending=False)).head(10)
-print(df.to_markdown())
+df_p024 = df_receipt.loc[:, ['customer_id', 'sales_ymd']].groupby('customer_id').apply(
+    lambda x: x.sort_values(by='sales_ymd', ascending=False)).head(10)
+print(df_p024.to_markdown())
+```
+
+```{python p024_clean, eval=TRUE, echo=FALSE}
+df_p024 = None
 ```
 
 ### P-025
 
-```{python r025_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
-df = df_receipt.loc[:, ['customer_id', 'sales_ymd']].groupby('customer_id').apply(lambda x: x.sort_values(by='sales_ymd', ascending=True)).head(10)
-print(df.to_markdown())
+```{python p025_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p025 = df_receipt.loc[:, ['customer_id', 'sales_ymd']].groupby('customer_id').apply(
+    lambda x: x.sort_values(by='sales_ymd', ascending=True)).head(10)
+print(df_p025.to_markdown())
+```
+
+```{python p025_clean, eval=TRUE, echo=FALSE}
+df_p025 = None
 ```
 
 ### P-026
 
+```{python p026_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_left = df_receipt.loc[:, ['customer_id', 'sales_ymd']].groupby('customer_id').apply(
+    lambda x: x.nlargest(1,['sales_ymd'])).reset_index(drop=True)
+df_right = df_receipt.loc[:, ['customer_id', 'sales_ymd']].groupby('customer_id').apply(
+    lambda x: x.nsmallest(1,['sales_ymd'])).reset_index(drop=True)
+df_merged = df_left.rename(columns={'sales_ymd': 'sales_ymd_last'}).merge(
+    df_right.rename(columns={'sales_ymd': 'sales_ymd_first'}), how='inner')
+df_p026 = df_merged.loc[df_merged.sales_ymd_last != df_merged.sales_ymd_first].head(n=10)
+print(df_p026.to_markdown())
+```
+
+```{python p026_clean, eval=TRUE, echo=FALSE}
+df_p026 = None
+```
+
 ### P-027
+
+Rのdplyr::summarize_all(mean)と同様、meanはすべての列についてまとめる。
+
+```{python p027_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p027 = df_receipt.loc[:, ['store_cd', 'amount']].groupby('store_cd').mean().sort_values('amount', ascending=False).head(5)
+print(df_p027.to_markdown())
+```
+
+```{python p027_clean, eval=TRUE, echo=FALSE}
+df_p027 = None
+```
 
 ### P-028
 
+```{python p028_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p028 = df_receipt.loc[:, ['store_cd', 'amount']].groupby('store_cd').median().sort_values('amount', ascending=False).head(5)
+print(df_p028.to_markdown())
+```
+
+```{python p028_clean, eval=TRUE, echo=FALSE}
+df_p028 = None
+```
+
 ### P-029
+
+最頻値を直接得る方法はないので、頻度を調べて最も高い項目を選ぶ。
+
+```{python p029_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p029 = df_receipt.loc[:, ['store_cd', 'amount']].groupby('store_cd').agg(lambda x:x.value_counts().index[0])
+print(df_p029.to_markdown())
+```
+
+```{python p029_clean, eval=TRUE, echo=FALSE}
+df_p029 = None
+```
 
 ### P-030
 
+ddof=0を指定して標本分散を求める。ddof=1 (Pandasのデフォルト)だと不偏分散になる。
+
+```{python p030_ddof0_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p030_ddof0 = df_receipt.loc[:, ['store_cd', 'amount']].groupby('store_cd').agg(lambda x:x.var(ddof=0)).sort_values('amount', ascending=False).head(5)
+print(df_p030_ddof0.to_markdown())
+```
+
+```{python p030_ddof1_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p030_ddof1 = df_receipt.loc[:, ['store_cd', 'amount']].groupby('store_cd').agg(lambda x:x.var(ddof=1)).sort_values('amount', ascending=False).head(5)
+print(df_p030_ddof1.to_markdown())
+```
+
+```{python p030_clean, eval=TRUE, echo=FALSE}
+df_p030_ddof0 = None
+df_p030_ddof1 = None
+```
+
 ### P-031
+
+標本標準偏差と不偏標準偏差と求める。
+
+```{python p031_ddof0_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p031_ddof0 = df_receipt.loc[:, ['store_cd', 'amount']].groupby('store_cd').agg(lambda x:x.std(ddof=0)).sort_values('amount', ascending=False).head(5)
+print(df_p031_ddof0.to_markdown())
+```
+
+```{python p031_ddof1_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p031_ddof1 = df_receipt.loc[:, ['store_cd', 'amount']].groupby('store_cd').agg(lambda x:x.std(ddof=1)).sort_values('amount', ascending=False).head(5)
+print(df_p031_ddof1.to_markdown())
+```
+
+```{python p031_clean, eval=TRUE, echo=FALSE}
+df_p031_ddof0 = None
+df_p031_ddof1 = None
+```
 
 ### P-032
 
+```{python p032_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p032 = df_receipt.loc[:, ['amount']].quantile([.25, .5, .75])
+print(df_p032.to_markdown())
+```
+
+```{python p032_clean, eval=TRUE, echo=FALSE}
+df_p032 = None
+```
+
 ### P-033
+
+```{python p033_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_mean = df_receipt.loc[:, ['store_cd', 'amount']].groupby('store_cd').mean().reset_index(drop=True)
+df_p033 = df_mean.loc[df_mean.amount >= 330]
+print(df_p033.to_markdown())
+```
+
+```{python p033_clean, eval=TRUE, echo=FALSE}
+df_p033 = None
+```
 
 ## 副問合わせ
 
 ### P-034
 
+顧客IDが'Z'から始まるのものは非会員を表すため除外したデータは、今後の問題で頻繁に出るのでここで作る。 df_receipt_z_excluded という変数に格納する。
+
+```{python p034_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_receipt_z_excluded = df_receipt[df_receipt['customer_id'].apply(lambda x: not x.startswith('Z'))]
+df_amount_mean = df_receipt_z_excluded.loc[:, ['customer_id', 'amount']].groupby('customer_id').sum()
+amount_mean = df_amount_mean['amount'].mean()
+print(amount_mean)
+```
+
 ### P-035
+
+```{python p035_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p035 = df_amount_mean[df_amount_mean.amount >= amount_mean].head(10)
+print(df_p035.to_markdown())
+```
+
+```{python p035_clean, eval=TRUE, echo=FALSE}
+df_amount_mean = None
+df_p035 = None
+```
 
 ## 結合
 
 ### P-036
 
+```{python p036_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+col_names = list(df_receipt.columns)
+col_names.append('store_name')
+df_p036 = df_receipt.merge(df_store, how='inner')[col_names].head(10)
+print(df_p036.to_markdown())
+```
+
+```{python p036_clean, eval=TRUE, echo=FALSE}
+df_p036 = None
+```
+
 ### P-037
+
+```{python p037_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+col_names = list(df_product.columns)
+col_names.append('category_small_name')
+df_p037 = df_product.merge(df_category, how='inner')[col_names].head(10)
+print(df_p037.to_markdown())
+```
+
+```{python p037_clean, eval=TRUE, echo=FALSE}
+df_p037 = None
+```
 
 ### P-038
 
+```{python p038_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p038 = df_customer.merge(df_receipt_z_excluded, on=['customer_id'], how='left')
+df_p038 = df_p038[df_p038.gender_cd == 1]
+df_p038 = df_p038.loc[:, ['customer_id', 'amount']]
+df_p038 = df_p038.groupby('customer_id').sum().fillna(0)
+print(df_p038.head(10).to_markdown())
+```
+
+```{python p038_clean, eval=TRUE, echo=FALSE}
+df_p038 = None
+```
+
 ### P-039
+
+同順位を無視して20位までで打ち切る。詳しくはissueを参照。
+
+```{python p039_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p039_n_day = df_receipt_z_excluded.loc[:, ['customer_id', 'sales_ymd']]
+df_p039_n_day = df_p039_n_day.groupby('customer_id').agg(lambda x:x.nunique()).nlargest(20, 'sales_ymd').reset_index(drop=False)
+df_p039_amount = df_receipt_z_excluded.loc[:, ['customer_id', 'amount']]
+df_p039_amount = df_p039_amount.groupby('customer_id').agg(lambda x:x.sum()).nlargest(20, 'amount').reset_index(drop=False)
+df_p039 = df_p039_n_day.merge(df_p039_amount, on=['customer_id'], how='outer')
+print(df_p039.to_markdown())
+```
+
+```{python p039_clean, eval=TRUE, echo=FALSE}
+df_p039_n_day = None
+df_p039_amount = None
+df_p039 = None
+```
 
 ### P-040
 
+```{python p040_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+print(df_store.assign(key=1).merge(df_product.assign(key=1), how='outer').shape[0])
+```
+
 ### P-041
 
+```{python p041_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p041 = df_receipt.loc[:, ['amount', 'sales_ymd']].groupby('sales_ymd').sum().diff().head(n=10)
+print(df_p041.to_markdown())
+```
+
+```{python p041_clean, eval=TRUE, echo=FALSE}
+df_p041 = None
+```
+
 ### P-042
+
+df_receiptと結合するとNaNだらけでよく分からないので、diffだけ取ったものを先に示す。
+
+```{python p042_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p042_diff1 = df_receipt.loc[:, ['amount', 'sales_ymd']].groupby('sales_ymd').sum().diff(periods=1).reset_index().rename(columns={'amount': 'diff1'})
+df_p042_diff2 = df_receipt.loc[:, ['amount', 'sales_ymd']].groupby('sales_ymd').sum().diff(periods=2).reset_index().rename(columns={'amount': 'diff2'})
+df_p042_diff3 = df_receipt.loc[:, ['amount', 'sales_ymd']].groupby('sales_ymd').sum().diff(periods=3).reset_index().rename(columns={'amount': 'diff3'})
+df_p042_diffs = df_p042_diff1.merge(df_p042_diff2, on='sales_ymd', how='left').merge(df_p042_diff3, on='sales_ymd', how='left').head(n=10)
+print(df_p042_diffs.to_markdown())
+df_p042 = df_p042_diffs.merge(df_receipt, on='sales_ymd', how='inner').head(n=10)
+print(df_p042.to_markdown())
+```
+
+```{python p042_clean, eval=TRUE, echo=FALSE}
+df_p042_diff1 = None
+df_p042_diff2 = None
+df_p042_diff3 = None
+df_p042_diffs = None
+df_p042 = None
+```
 
 ## 縦横変換
 
 ### P-043
 
+```{python p043_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_sales_summary = df_receipt.merge(df_customer, how='inner').replace({'男性': '0', '女性': '1', '不明': '9'})
+df_sales_summary['age'] = (df_sales_summary['age'] // 10) * 10
+df_sales_summary = df_sales_summary.loc[:, ['amount', 'gender', 'age']].groupby(['gender', 'age']).sum().reset_index()
+df_sales_summary = df_sales_summary.pivot(index='age', columns='gender', values='amount').reset_index()
+print(df_sales_summary.head(n=10).to_markdown())
+```
+
 ### P-044
+
+```{python p044_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_sales_summary = pd.melt(df_sales_summary, id_vars=['age'], var_name='gender', value_name='amount')
+df_sales_summary['gender'] = df_sales_summary['gender'].replace({'0': '00', '1': '01', '9': '99'})
+print(df_sales_summary.head(n=10).to_markdown())
+```
+
+```{python p044_clean, eval=TRUE, echo=FALSE}
+df_sales_summary = None
+```
 
 ## データ変換
 
 ### P-045
 
+```{python p045_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_customer['birth_day'] = pd.to_datetime(df_customer['birth_day'], format='%Y-%m-%d')
+df_p045 = df_customer.loc[:,['customer_id', 'birth_day']]
+df_p045['birth_day'] = df_p045['birth_day'].apply(lambda x: x.strftime('%Y%m%d'))
+print(df_p045.head(n=10).to_markdown())
+```
+
+```{python p045_clean, eval=TRUE, echo=FALSE}
+df_p045 = None
+```
+
 ### P-046
+
+```{python p046_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_customer['application_date'] = pd.to_datetime(df_customer['application_date'], format='%Y%m%d')
+df_p046 = df_customer.loc[:,['customer_id', 'application_date']]
+print(df_p046.head(n=10).to_markdown())
+```
+
+```{python p046_clean, eval=TRUE, echo=FALSE}
+df_p046 = None
+```
 
 ### P-047
 
+```{python p047_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_receipt['sales_ymd'] = pd.to_datetime(df_receipt['sales_ymd'], format='%Y%m%d')
+df_p047 = df_receipt.loc[:,['sales_ymd', 'receipt_no', 'receipt_sub_no']]
+print(df_p047.head(n=10).to_markdown())
+```
+
+```{python p047_clean, eval=TRUE, echo=FALSE}
+df_p047 = None
+```
+
 ### P-048
+
+```{python p048_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_receipt['sales_epoch'] = pd.to_datetime(df_receipt['sales_epoch'], unit='s')
+df = df_receipt.loc[:,['sales_epoch', 'receipt_no', 'receipt_sub_no']]
+print(df.head(n=10).to_markdown())
+```
+
+```{python p048_clean, eval=TRUE, echo=FALSE}
+df_p048 = None
+```
 
 ### P-049, P-050, P-051
 
+DatetimeIndexを使って年月日を取り出す。
+
+```{python p049_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_receipt['year'] = pd.DatetimeIndex(df_receipt['sales_epoch']).year
+df_receipt['month'] = pd.DatetimeIndex(df_receipt['sales_epoch']).month
+df_receipt['day'] = pd.DatetimeIndex(df_receipt['sales_epoch']).day
+print(df_receipt.loc[:,['year', 'receipt_no', 'receipt_sub_no']].head(n=10).to_markdown())
+print(df_receipt.loc[:,['month', 'receipt_no', 'receipt_sub_no']].head(n=10).to_markdown())
+print(df_receipt.loc[:,['day', 'receipt_no', 'receipt_sub_no']].head(n=10).to_markdown())
+```
+
 ### P-052
+
+```{python p052_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p052 = df_receipt_z_excluded.loc[:, ['customer_id', 'amount']].groupby('customer_id').sum()
+df_p052['amount_high'] = (df_p052.amount > 2000) + 0
+print(df_p052.head(n=10).to_markdown())
+```
+
+```{python p052_clean, eval=TRUE, echo=FALSE}
+df_p052 = None
+```
 
 ### P-053
 
+```{python p053_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_customer['tokyo'] = df_customer['postal_cd'].str.split(pat=r"\D+", n=1, expand=True).iloc[:,0].apply(lambda x: 2 - (int(x) >= 100 and int(x) <= 209))
+df_p053 = df_customer.merge(df_receipt, how='inner')
+df_p053 = df_p053.loc[:, ['tokyo', 'customer_id']].groupby('tokyo').nunique()
+print(df_p053.head(n=10).to_markdown())
+```
+
+```{python p053_clean, eval=TRUE, echo=FALSE}
+df_p053 = None
+```
+
 ### P-054
+
+```{python p054_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_customer['pref'] = df_customer['address'].str.split(pat=r"(埼玉県|千葉県|東京都|神奈川県)", n=1, expand=True).loc[:,1].replace({'埼玉県': '11', '千葉県': '12', '東京都': '13', '神奈川県': '14'})
+df_p054 = df_customer.loc[:, ['customer_id', 'address', 'pref']]
+print(df_p054.head(n=10).to_markdown())
+```
+
+```{python p054_clean, eval=TRUE, echo=FALSE}
+df_p054 = None
+```
 
 ### P-055
 
+```{python p055_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p055 = df_receipt.loc[:, ['customer_id', 'amount']].groupby('customer_id').sum()
+df_p055['rank'] = pd.qcut(df_p055['amount'], q=[0, 0.25, 0.5, 0.75, 1], labels=[1, 2, 3, 4])
+print(df_p055.head(n=10).to_markdown())
+```
+
+```{python p055_clean, eval=TRUE, echo=FALSE}
+df_p055 = None
+```
+
 ### P-056
+
+```{python p056_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p056 = df_customer.loc[:,['customer_id', 'age', 'birth_day']]
+df_p056['age'] = ['{}s'.format(x) for x in np.minimum(((df_customer['age'] // 10) * 10).to_list(), 60)]
+print(df_p056.head(n=10).to_markdown())
+```
+
+```{python p056_clean, eval=TRUE, echo=FALSE}
+df_p056 = None
+```
 
 ### P-057
 
+```{python p057_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p057 = df_customer.loc[:,['customer_id', 'age', 'gender']]
+df_p057['age'] = ['{}s'.format(x) for x in np.minimum(((df_customer['age'] // 10) * 10).to_list(), 60)]
+df_p057['age_gender'] = df_p057['age'].map(str) + df_p057['gender'].map(str)
+print(df_p057.head(n=10).to_markdown())
+```
+
+```{python p057_clean, eval=TRUE, echo=FALSE}
+df_p057 = None
+```
+
 ### P-058
+
+```{python p058_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+print(pd.get_dummies(df_customer, columns=['gender_cd']).head(n=10).to_markdown())
+```
 
 ## 数値変換
 
 ### P-059
 
+```{python p059_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p059 = df_receipt_z_excluded.loc[:, ['customer_id', 'amount']].groupby('customer_id').sum()
+scaler = StandardScaler()
+scaler.fit(df_p059)
+scaler.transform(df_p059)
+print(df_p059.head(n=10).to_markdown())
+```
+
+```{python p059_clean, eval=TRUE, echo=FALSE}
+df_p059 = None
+```
+
 ### P-060
 
+```{python p060_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p060 = df_receipt_z_excluded.loc[:, ['customer_id', 'amount']].groupby('customer_id').sum()
+scaler = MinMaxScaler()
+scaler.fit(df_p060)
+scaler.transform(df_p060)
+print(df_p060.head(n=10).to_markdown())
+```
+
+```{python p060_clean, eval=TRUE, echo=FALSE}
+df_p060 = None
+```
+
 ### P-061, P-062
+
+```{python p061_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p061 = df_receipt_z_excluded.loc[:, ['customer_id', 'amount']].groupby('customer_id').sum()
+df_p061['amount'] = np.log10(df_p061['amount'])
+print(df_p061.head(n=10).to_markdown())
+
+df_p062 = df_receipt_z_excluded.loc[:, ['customer_id', 'amount']].groupby('customer_id').sum()
+df_p062['amount'] = np.log(df_p062['amount'])
+print(df_p062.head(n=10).to_markdown())
+```
+
+```{python p061_clean, eval=TRUE, echo=FALSE}
+df_p061 = None
+df_p062 = None
+```
 
 ## 四則演算
 
 ### P-063
 
+```{python p063_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p063 = df_product.copy()
+df_p063['profit'] = (df_p063['unit_price'] - df_p063['unit_cost']) / df_p063['unit_price']
+print(df_p063.head(n=10).to_markdown())
+```
+
+```{python p063_clean, eval=TRUE, echo=FALSE}
+df_p063 = None
+```
+
 ### P-064
+
+```{python p064_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p064 = df_product.dropna()
+df_p064['profit'] = (df_p064['unit_price'] - df_p064['unit_cost']) / df_p064['unit_price']
+print(df_p064.head(n=10).to_markdown())
+```
+
+```{python p064_clean, eval=TRUE, echo=FALSE}
+df_p064 = None
+```
 
 ### P-065, P-066, P-067
 
+NAに対する計算結果はNAになるので、特に対処しない。
+
+```{python p065_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p065 = df_product.copy()
+profit_scale = 1.0 / 0.7
+df_p065['unit_price_floor'] = np.floor(df_p065['unit_cost'] * profit_scale)
+df_p065['unit_price_round'] = np.round(df_p065['unit_cost'] * profit_scale)
+df_p065['unit_price_ceil'] = np.ceil(df_p065['unit_cost'] * profit_scale)
+print(df_p065.head(n=10).to_markdown())
+```
+
+```{python p065_clean, eval=TRUE, echo=FALSE}
+df_p065 = None
+```
+
 ### P-068
+
+```{python p068_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p068 = df_product.copy()
+df_p068['price_tax_included'] = np.floor(df_p068['unit_price'] * 1.1)
+print(df_p068.head(n=10).to_markdown())
+```
+
+```{python p068_clean, eval=TRUE, echo=FALSE}
+df_p068 = None
+```
 
 ### P-069
 
+```{python p069_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_r069_joined = df_receipt.merge(df_product, how='inner')
+df_r069_full = df_r069_joined.loc[:, ['customer_id', 'amount']].groupby('customer_id').sum().reset_index()
+df_r069_07 = df_r069_joined[df_r069_joined.category_major_cd == 7]
+df_r069_07 = df_r069_07.loc[:, ['customer_id', 'amount']].groupby('customer_id').sum().reset_index().rename(columns={'amount': 'amount07'})
+df_r069_joined = df_r069_07.merge(df_r069_full, how='inner')
+df_r069_joined['ratio'] = df_r069_joined['amount07'] / df_r069_joined['amount']
+print(df_r069_joined.head(n=10).to_markdown())
+```
+
+```{python p069_clean, eval=TRUE, echo=FALSE}
+df_r069_joined = None
+df_r069_full = None
+df_r069_07 = None
+```
+
 ## 日付型の計算
+
+日付は変換済とする
+
+```{python p070_pre, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_receipt = pd.read_csv('../data/receipt.csv', low_memory=False)
+df_customer = pd.read_csv('../data/customer.csv', low_memory=False)
+df_r070_date = df_receipt.merge(df_customer, how='inner')
+df_r070_date['application_date'] = pd.to_datetime(df_r070_date['application_date'], format='%Y%m%d')
+df_r070_date['sales_ymd'] = pd.to_datetime(df_r070_date['sales_ymd'], format='%Y%m%d')
+
+df_r070_date['diff_sec'] = df_r070_date['sales_ymd'] - df_r070_date['application_date']
+df_r070_date['elapsed_seconds'] = df_r070_date['diff_sec'] / np.timedelta64(1, 's')
+df_r070_date['elapsed_day'] = df_r070_date['diff_sec'] / np.timedelta64(1, 'D')
+
+df_r070_date['elapsed'] = [relativedelta(df_r070_date.loc[i,'sales_ymd'], df_r070_date.loc[i,'application_date']) for i in range(df_r070_date.shape[0])]
+df_r070_date['elapsed_year'] = [x.years for x in df_r070_date['elapsed']]
+df_r070_date['elapsed_month'] = [x.years * 12 + x.months for x in df_r070_date['elapsed']]
+```
 
 ### P-070, P-071, P-072, P-073
 
+```{python p070_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+print(df_r070_date.loc[:,['customer_id', 'application_date', 'sales_ymd', 'elapsed_day']].head(n=10).to_markdown())
+print(df_r070_date.loc[:,['customer_id', 'application_date', 'sales_ymd', 'elapsed_month']].head(n=10).to_markdown())
+print(df_r070_date.loc[:,['customer_id', 'application_date', 'sales_ymd', 'elapsed_year']].head(n=10).to_markdown())
+print(df_r070_date.loc[:,['customer_id', 'application_date', 'sales_ymd', 'elapsed_seconds']].head(n=10).to_markdown())
+```
+
 ### P-074
+
+```{python p074_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_r070_date['dayofweek'] = pd.DatetimeIndex(df_r070_date['sales_ymd']).dayofweek
+df_r070_date['week_start'] = [df_r070_date.loc[i, 'sales_ymd'] + relativedelta(days=-int(df_r070_date.loc[i, 'dayofweek'])) for i in range(df_r070_date.shape[0])]
+print(df_r070_date.loc[:,['sales_ymd', 'dayofweek', 'week_start']].head(n=10).to_markdown())
+```
+
+```{python p074_clean, eval=TRUE, echo=FALSE}
+df_r070_date = None
+```
 
 ## サンプリング
 
 ### P-075
 
+```{python p075_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p075 = df_customer.sample(frac=0.1)
+print(df_p075.head(n=10).to_markdown())
+print(df_p075.shape)
+```
+
+```{python p075_clean, eval=TRUE, echo=FALSE}
+df_p075 = None
+```
+
 ### P-076
+
+```{python p076_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p076 = df_customer.groupby('gender').apply(lambda x: x.sample(frac=0.1))
+print(df_customer[df_customer.gender=="男性"].shape)
+print(df_customer[df_customer.gender=="女性"].shape)
+print(df_p076[df_p076.gender=="男性"].shape)
+print(df_p076[df_p076.gender=="女性"].shape)
+```
+
+```{python p076_clean, eval=TRUE, echo=FALSE}
+df_p076 = None
+```
 
 ## 外れ値・異常値
 
-### P-077, P-078
+### P-077
+
+```{python p077_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_amount = df_receipt_z_excluded.loc[:, ['customer_id', 'amount']].groupby('customer_id').sum()
+df_p077 = df_amount[(df_amount.amount < np.mean(df_amount.amount) - 3.0 * np.std(df_amount.amount)) |
+          (df_amount.amount > np.mean(df_amount.amount) + 3.0 * np.std(df_amount.amount))]
+print(df_p077.head(n=10).to_markdown())
+```
+
+```{python p077_clean, eval=TRUE, echo=FALSE}
+df_p077 = None
+```
+
+### P-078
+
+```{python p078_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+iqr = df_amount.amount.quantile([.25, .5, .75])
+df_p078 = df_amount[(df_amount.amount < iqr.iloc[1] - 1.5 * (iqr.iloc[2]- iqr.iloc[0])) |
+          (df_amount.amount > iqr.iloc[1] + 1.5 * (iqr.iloc[2]- iqr.iloc[0]))]
+print(df_p078.head(n=10).to_markdown())
+```
+
+```{python p078_clean, eval=TRUE, echo=FALSE}
+df_amount = None
+df_p078 = None
+```
 
 ## 欠損値
 
 ### P-079
 
+```{python p079_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+col_names = df_product.columns
+na_counts = [len(df_product) - df_product[x].count() for x in col_names]
+print(pd.DataFrame({'column':col_names, 'nan_count':na_counts}).head(n=10).to_markdown())
+```
+
 ### P-080
+
+```{python p080_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+print(df_product.shape)
+print(df_product.dropna().shape)
+```
 
 ### P-081
 
+```{python p081_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+mean_price = np.mean(df_product['unit_price'])
+mean_cost = np.mean(df_product['unit_cost'])
+df_product_2 = df_product.fillna(value={'unit_price':mean_price, 'unit_cost':mean_cost})
+print(df_product_2.head(n=10).to_markdown())
+```
+
+```{python p081_clean, eval=TRUE, echo=FALSE}
+df_product_2 = None
+```
+
 ### P-082
 
+```{python p082_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+median_price = np.nanmedian(df_product['unit_price'])
+median_cost = np.nanmedian(df_product['unit_cost'])
+df_product_3 = df_product.fillna(value={'unit_price':median_price, 'unit_cost':median_cost})
+print(df_product_3.head(n=10).to_markdown())
+```
+
+```{python p082_clean, eval=TRUE, echo=FALSE}
+df_product_3 = None
+```
+
 ### P-083
+
+```{python p083_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_product_4 = df_product.groupby('category_small_cd').apply(lambda x: x.fillna(value={'unit_price':np.nanmedian(x['unit_price']), 'unit_cost':np.nanmedian(x['unit_cost'])}))
+print(df_product_4.head(n=10).to_markdown())
+```
+
+```{python p083_clean, eval=TRUE, echo=FALSE}
+df_product_4 = None
+```
 
 ## 除算エラー対応
 
 ### P-084
 
+```{python p084_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_joined_r084 = df_customer.merge(df_receipt, on='customer_id', how='left').fillna(value={'amount':0})
+df_joined_r084['sales_epoch'] = pd.to_datetime(df_joined_r084['sales_epoch'], unit='s')
+df_joined_r084['sales_year'] = pd.DatetimeIndex(df_joined_r084['sales_epoch']).year
+
+df_r084_full = df_joined_r084.groupby('customer_id').sum()
+df_r084_2019 = df_joined_r084[df_joined_r084.sales_year == 2019].groupby('customer_id').sum().rename(columns={'amount': 'amount2019'})
+df_r084 = df_r084_full.merge(df_r084_2019, how='left').fillna(value={'amount2019':0})
+print(df_r084.shape)
+print(df_r084.dropna().shape)
+```
+
+```{python p084_clean, eval=TRUE, echo=FALSE}
+df_joined_r084 = None
+df_r084_full = None
+df_r084_2019 = None
+## df_r084 は後で使う
+```
+
 ## 座標データ
 
 ### P-085
 
+```{python p085_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_085 = df_customer.merge(df_geocode, on='postal_cd')
+df_085 = df_085.loc[:,['postal_cd', 'longitude', 'latitude']].groupby('postal_cd').mean()
+df_customer_1 = df_customer.merge(df_085, on='postal_cd')
+print(df_customer_1.head(n=10).to_markdown())
+```
+
 ### P-086
+
+```{python p086_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_customer_2 = df_customer_1.merge(df_store, left_on='application_store_cd', right_on='store_cd').rename(columns={'address_x': 'address_customer', 'address_y': 'address_store'})
+
+## 緯度(latitude)、経度(longitude)
+df_customer_2['distance'] = df_customer_2.apply(lambda x: geodesic((x['latitude_x'], x['longitude_x']), (x['latitude_y'], x['longitude_y'])).km, axis=1)
+
+print(df_customer_2.head(n=10).to_markdown())
+```
+
+```{python p086_clean, eval=TRUE, echo=FALSE}
+df_customer_1 = None
+df_customer_2 = None
+```
 
 ## 名寄せ
 
 ### P-087
 
+```{python p087_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p087 = df_receipt.loc[:, ['customer_id', 'amount']].groupby('customer_id').sum().reset_index()
+df_customer_u = df_customer.merge(df_p087, how='left').fillna(value={'amount':0}).sort_values(['amount', 'customer_id']).drop_duplicates(subset=['customer_name', 'postal_cd'])
+print(df_customer_u.head(n=10).to_markdown())
+```
+
 ### P-088
+
+```{python p088_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_customer_n = df_customer.drop('customer_id', 1).merge(df_customer_u.loc[:,['customer_id', 'customer_name', 'postal_cd']], how='inner')
+print(df_customer_n.head(n=10).to_markdown())
+```
 
 ## データ分割
 
 ### P-089
 
+```{python p089_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_sample_r089 = df_customer_u[df_customer_u.amount > 0]
+df_train, df_test = train_test_split(df_sample_r089, train_size=0.8)
+print(df_train.shape)
+print(df_test.shape)
+```
+
+```{python p089_clean, eval=TRUE, echo=FALSE}
+df_customer_u = None
+df_customer_n = None
+df_sample_r089 = None
+df_train = None
+df_test = None
+```
+
 ### P-090
+
+```{python p090_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_r090_date = pd.read_csv('../data/receipt.csv', low_memory=False)
+df_r090_date['sales_ymd'] = pd.to_datetime(df_r090_date['sales_ymd'], format='%Y%m%d')
+df_r090_date['year'] = pd.DatetimeIndex(df_r090_date['sales_ymd']).year
+df_r090_date['month'] = pd.DatetimeIndex(df_r090_date['sales_ymd']).month
+df_r090_date = df_r090_date.loc[:,['year', 'month', 'amount']].groupby(['year', 'month']).sum().reset_index().sort_values(['year', 'month'])
+df_r090_date['index'] = range(df_r090_date.shape[0])
+
+n_train = 12
+n_test = 6
+df_r090 = df_r090_date.sample(n_train + n_test).sort_values(['index'])
+df_train = df_r090.head(n_train)
+df_test = df_r090.tail(n_test)
+print(df_train.shape)
+print(df_test.shape)
+```
+
+```{python p090_clean, eval=TRUE, echo=FALSE}
+df_r090_date = None
+df_r090 = None
+df_train = None
+df_test = None
+```
 
 ## 不均衡データ
 
 ### P-091
 
+```{python p091_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+n_samples = 100
+df_r091 = df_r084.copy()
+df_r091_non_zeros = df_r091[df_r091.amount > 0].sample(n_samples)
+df_r091_zeros = df_r091[df_r091.amount == 0].sample(n_samples)
+print(df_r091_non_zeros.shape)
+print(df_r091_zeros.shape)
+```
+
+```{python p091_clean, eval=TRUE, echo=FALSE}
+df_r091_non_zeros = None
+df_r091_zeros = None
+```
+
 ## 正規化・非正規化
 
 ### P-092
 
+```{python p092_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+print(df_customer.drop('gender', 1).head(n=10).to_markdown())
+print(df_customer.loc[:,['gender_cd', 'gender']].drop_duplicates(subset=['gender_cd', 'gender']).to_markdown())
+```
+
 ### P-093
+
+```{python p093_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_product_r093 = df_product.merge(df_category, on=['category_major_cd', 'category_medium_cd', 'category_small_cd'], how='left')
+print(df_product_r093.head(n=10).to_markdown())
+```
 
 ## ファイル入出力
 
+```{python p094_mkdir, eval=TRUE, echo=FALSE, results='asis', cache=FALSE}
+io_dirname = 'output'
+os.makedirs(io_dirname, exist_ok=True)
+```
+
 ### P-094, P-097
+
+```{python p094_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_product_r093.to_csv(os.path.join(io_dirname, 'r094.csv'), sep=',', header=True, index=False, encoding='utf-8-sig')
+df_r097 = pd.read_csv(os.path.join(io_dirname, 'r094.csv'), low_memory=False)
+assert df_product_r093.shape == df_r097.shape
+```
+
+```{python p094_clean, eval=TRUE, echo=FALSE}
+df_r097 = None
+```
 
 ### P-095
 
+```{python p095_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_product_r093.to_csv(os.path.join(io_dirname, 'r095.csv'), sep=',', header=True, index=False, encoding='cp932')
+```
+
 ### P-096, P-098
 
+```{python p096_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_product_r093.to_csv(os.path.join(io_dirname, 'r096.csv'), sep=',', header=False, index=False, encoding='utf-8-sig')
+df_r098 = pd.read_csv(os.path.join(io_dirname, 'r096.csv'), header=None, low_memory=False)
+assert df_product_r093.shape == df_r098.shape
+```
+
+```{python p096_clean, eval=TRUE, echo=FALSE}
+df_r098 = None
+```
+
 ### P-099, P-100
+
+```{python p099_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_product_r093.to_csv(os.path.join(io_dirname, 'r099.csv'), sep="\t", header=True, index=False, encoding='utf-8-sig')
+df_r100 = pd.read_csv(os.path.join(io_dirname, 'r099.csv'), sep="\t", low_memory=False)
+assert df_product_r093.shape == df_r100.shape
+```
+
+```{python p099_clean, eval=TRUE, echo=FALSE}
+df_r100 = None
+df_product_r093 = None
+```
+
