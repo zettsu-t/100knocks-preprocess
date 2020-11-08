@@ -1288,7 +1288,8 @@ df_sales_summary %>% kable() %>% kable_styling()
 df_sales_summary %>%
     tidyr::pivot_longer(cols=setdiff(colnames(df_sales_summary), 'age'), names_to='gender', values_to='amount') %>%
     dplyr::mutate(gender=as.integer(gender)) %>%
-    dplyr::mutate(gender=sprintf('%02d', (gender > 1) * 90 + gender %% 10))
+    dplyr::mutate(gender=sprintf('%02d', (gender > 1) * 90 + gender %% 10)) %>%
+    dplyr::arrange(age, gender)
 ```
 
 ```{r r044_print, eval=TRUE, echo=FALSE, cache=TRUE}
@@ -1296,6 +1297,7 @@ df_sales_summary %>%
     tidyr::pivot_longer(cols=setdiff(colnames(df_sales_summary), 'age'), names_to='gender', values_to='amount') %>%
     dplyr::mutate(gender=as.integer(gender)) %>%
     dplyr::mutate(gender=sprintf('%02d', (gender > 1) * 90 + gender %% 10)) %>%
+    dplyr::arrange(age, gender) %>%
     kable() %>% kable_styling()
 ```
 

@@ -20,7 +20,7 @@ urlcolor: blue
 
 [データサイエンス100本ノック（構造化データ加工編）](https://github.com/The-Japan-DataScientist-Society/100knocks-preprocess)の、Python版についての私の解答です。正解例は公式をみてください。
 
-まだ答え合わせはしていません。後日公式解答集と比較して誤りを訂正します。
+公式解答集と比較し、既知の誤りは訂正してあります。
 
 ## 問題を解く環境をインストールする
 
@@ -42,6 +42,15 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
+
+import dateutil
+import pkg_resources
+import sklearn
+print(dateutil.__version__)
+print(pkg_resources.get_distribution('geopy').version)
+print(pkg_resources.get_distribution('numpy').version)
+print(pkg_resources.get_distribution('pandas').version)
+print(sklearn.__version__)
 ```
 
 以下の目的でPythonのパッケージを用いる。Rにも対応するパッケージがあるが、明示的なパッケージが不要な場合(baseなど)もある。
@@ -405,7 +414,7 @@ df_p023 = None
 
 ### P-024
 
-sales_ymdはstrなので日時に変換する。
+sales_ymdはstrなので日時に変換する。group_by()すると列がインデックスになるので、インデックスを無くすには(Rでいうdplyr::ungroupするには)reset_indexする()。
 
 ```{python p024_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
 df_receipt['sales_ymd'] = pd.to_datetime(df_receipt['sales_ymd'], format='%Y%m%d')
@@ -691,7 +700,7 @@ df_sales_summary = df_receipt.merge(df_customer, how='inner').replace({'男性':
 df_sales_summary['age'] = (df_sales_summary['age'] // 10) * 10
 df_sales_summary = df_sales_summary.loc[:, ['amount', 'gender', 'age']].groupby(['gender', 'age']).sum().reset_index()
 df_sales_summary = df_sales_summary.pivot(index='age', columns='gender', values='amount').reset_index().sort_index(axis=1, level='gender')
-print(df_sales_summary.head(n=10).to_markdown())
+print(df_sales_summary.to_markdown())
 ```
 
 ### P-044
