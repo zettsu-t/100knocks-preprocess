@@ -130,7 +130,7 @@ df_p003 = None
 
 ### P-004
 
-行選択に条件を書く。
+行選択に条件を書く。公式解答ではqueryを使っている。
 
 ```{python p004_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
 df_p004 = df_receipt.loc[df_receipt.customer_id == 'CS018205000001', ['sales_ymd', 'customer_id', 'product_cd', 'amount']]
@@ -346,6 +346,7 @@ df_p018 = None
 ```{python p019_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
 df_receipt['rank'] = df_receipt['amount'].rank(method='dense', ascending=False)
 df_p019 = df_receipt.sort_values('rank').head(n=10)
+df_p019 = df_p019.loc[:, ['customer_id', 'amount', 'rank']].head(n=10)
 print(df_p019.to_markdown())
 ```
 
@@ -354,6 +355,7 @@ print(df_p019.to_markdown())
 ```{python p019_minrank_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
 df_receipt['rank'] = df_receipt['amount'].rank(method='min', ascending=False)
 df_p019 = df_receipt.sort_values('rank').head(n=10)
+df_p019 = df_p019.loc[:, ['customer_id', 'amount', 'rank']].head(n=10)
 print(df_p019.to_markdown())
 ```
 
@@ -366,6 +368,7 @@ df_p019 = None
 ```{python p020_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
 df_receipt['rank'] = df_receipt['amount'].rank(method='first', ascending=False)
 df_p020 = df_receipt.sort_values('rank').head(n=10)
+df_p020 = df_p020.loc[:, ['customer_id', 'amount', 'rank']].head(n=10)
 print(df_p020.to_markdown())
 ```
 
@@ -429,6 +432,8 @@ df_p025 = None
 
 ### P-026
 
+公式では agg({'sales_ymd':['max','min']}) を使っている。確かにその方が分かりやすい。
+
 ```{python p026_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
 df_left = df_receipt.loc[:, ['customer_id', 'sales_ymd']].groupby('customer_id').apply(
     lambda x: x.nlargest(1,['sales_ymd'])).reset_index(drop=True)
@@ -470,17 +475,23 @@ df_p028 = None
 
 ### P-029
 
-最頻値を直接得る方法はないので、頻度を調べて最も高い項目を選ぶ。
+最頻値を直接得る方法はないので、頻度を調べて最も高い項目を選ぶ。公式解答とは解き方が異なる。
 
-★ product_cdを含むように要修正
+★ できれば項目だけでなく、何回出現したかも知りたい。
 
-```{python p029_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
-df_p029 = df_receipt.loc[:, ['store_cd', 'product_cd']].groupby('store_cd').agg(lambda x:x.value_counts().index[0])
-print(df_p029.to_markdown())
+```{python p029_1_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p029_1 = df_receipt.loc[:, ['store_cd', 'product_cd']].groupby('store_cd').agg(lambda x:x.value_counts().index[0])
+print(df_p029_1.to_markdown())
+```
+
+```{python p029_2_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
+df_p029_2 = df_receipt.loc[:, ['store_cd', 'product_cd']].groupby('store_cd').agg(pd.Series.mode)
+print(df_p029_2.to_markdown())
 ```
 
 ```{python p029_clean, eval=TRUE, echo=FALSE}
-df_p029 = None
+df_p029_1 = None
+df_p029_2 = None
 ```
 
 ### P-030
@@ -524,7 +535,7 @@ df_p031_ddof1 = None
 ### P-032
 
 ```{python p032_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
-df_p032 = df_receipt.loc[:, ['amount']].quantile([.25, .5, .75])
+df_p032 = df_receipt.loc[:, ['amount']].quantile([.0, .25, .5, .75, 1])
 print(df_p032.to_markdown())
 ```
 
@@ -577,7 +588,6 @@ df_p035 = None
 col_names = list(df_receipt.columns)
 col_names.append('store_name')
 df_p036 = df_receipt.merge(df_store, how='inner')[col_names]
-df_p036 = df_receipt.merge(df_store, how='inner')[col_names]
 print(df_p036.head(10).to_markdown())
 print(df_p036['store_name'].unique()[0:9])
 ```
@@ -617,7 +627,7 @@ df_p038 = None
 
 同順位を無視して20位までで打ち切る。詳しくはissueを参照。
 
-★ できればNAは埋めたい。
+★ できればNAを埋めたい。
 
 ```{python p039_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
 df_p039_n_day = df_receipt_z_excluded.loc[:, ['customer_id', 'sales_ymd']]
@@ -749,7 +759,7 @@ df_p048 = None
 
 ### P-049, P-050, P-051
 
-DatetimeIndexを使って年月日を取り出す。
+DatetimeIndexを使って年月日を取り出す。公式解答では pd.to_datetime.dt を用いている。
 
 ```{python p049_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
 df_receipt['year'] = pd.DatetimeIndex(df_receipt['sales_epoch']).year
@@ -1006,12 +1016,14 @@ print(df_r070_each_customer.loc[:,['customer_id', 'application_date', 'sales_ymd
 
 ### P-074
 
-★ 出力される列がRと微妙に異なる。
+出力される列がRと微妙に異なると思ったら、これまでの問題の出力は使わず、df_receiptを読み直すのだった。
 
 ```{python p074_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
-df_r070_date['dayofweek'] = pd.DatetimeIndex(df_r070_date['sales_ymd']).dayofweek
-df_r070_date['week_start'] = [df_r070_date.loc[i, 'sales_ymd'] + relativedelta(days=-int(df_r070_date.loc[i, 'dayofweek'])) for i in range(df_r070_date.shape[0])]
-print(df_r070_date.loc[:,['week_start', 'sales_ymd', 'dayofweek']].head(n=10).to_markdown())
+df_p074 = df_receipt.loc[:, ['customer_id', 'sales_ymd']]
+df_p074['sales_ymd'] = pd.to_datetime(df_p074['sales_ymd'], format='%Y%m%d')
+df_p074['dayofweek'] = pd.DatetimeIndex(df_p074['sales_ymd']).dayofweek
+df_p074['week_start'] = [df_p074.loc[i, 'sales_ymd'] + relativedelta(days=-int(df_p074.loc[i, 'dayofweek'])) for i in range(df_p074.shape[0])]
+print(df_p074.loc[:,['customer_id', 'week_start', 'sales_ymd', 'dayofweek']].head(n=10).to_markdown())
 ```
 
 ```{python p074_each_customer, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
@@ -1047,12 +1059,16 @@ df_p075 = None
 
 ### P-076
 
+公式解答では train_test_split を用いている。
+
 ```{python p076_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
 df_p076 = df_customer.groupby('gender').apply(lambda x: x.sample(frac=0.1))
 print(df_customer[df_customer.gender=="男性"].shape)
 print(df_customer[df_customer.gender=="女性"].shape)
+print(df_customer[df_customer.gender=="不明"].shape)
 print(df_p076[df_p076.gender=="男性"].shape)
 print(df_p076[df_p076.gender=="女性"].shape)
+print(df_p076[df_p076.gender=="不明"].shape)
 ```
 
 ```{python p076_clean, eval=TRUE, echo=FALSE}
@@ -1206,12 +1222,12 @@ df_customer_2 = None
 
 ### P-087
 
-★ これだと、amountが同じ時に最も小さいcustomer_idを選べない。要修正。
+公式解答に従い、 ascending を複数渡す (ascendingにboolのリストを渡せることは、Pandasのマニュアルに書いてある)。30行減ったのはRと同じである。
 
 ```{python p087_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
 df_p087 = df_receipt.loc[:, ['customer_id', 'amount']].groupby('customer_id').sum().reset_index()
-df_customer_u = df_customer.merge(df_p087, how='left').fillna(value={'amount':0}).sort_values(['amount', 'customer_id']).drop_duplicates(subset=['customer_name', 'postal_cd'])
-print(df_customer_u.head(n=10).to_markdown())
+df_customer_u = df_customer.merge(df_p087, how='left').fillna(value={'amount':0}).sort_values(['amount', 'customer_id'], ascending=[False, True]).drop_duplicates(subset=['customer_name', 'postal_cd'])
+print(df_customer.shape[0] - df_customer_u.shape[0])
 ```
 
 ### P-088
@@ -1269,6 +1285,8 @@ df_test = None
 ## 不均衡データ
 
 ### P-091
+
+公式解答では unbalanced パッケージを使っている。
 
 ```{python p091_print, eval=TRUE, echo=TRUE, results='asis', cache=FALSE}
 n_samples = 100
